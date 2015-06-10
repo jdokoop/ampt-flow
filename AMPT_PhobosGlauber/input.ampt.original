@@ -1,0 +1,57 @@
+200.           ! EFRM (sqrt(S_NN) in GeV)
+CMS             ! FRAME
+A               ! PROJ
+A               ! TARG
+197             ! IAP (projectile A number)
+79              ! IZP (projectile Z number)
+197             ! IAT (target A number)
+79              ! IZT (target Z number)
+2              ! NEVNT (total number of events)
+0.              ! BMIN (mininum impact parameter in fm) 
+13.             ! BMAX (maximum impact parameter in fm, also see below)
+1		! ISOFT (D=1): select Default AMPT or String Melting(see below)
+150		! NTMAX: number of timesteps (D=150), see below
+0.2		! DT: timestep in fm (hadron cascade time= DT*NTMAX) (D=0.2)
+2.2		! PARJ(41): parameter a in Lund symmetric splitting function
+0.5      	! PARJ(42): parameter b in Lund symmetric splitting function
+1	      	! (D=1,yes;0,no) flag for popcorn mechanism(netbaryon stopping)
+1.0	      	! PARJ(5) to control BMBbar vs BBbar in popcorn (D=1.0)
+1		! shadowing flag (Default=1,yes; 0,no)
+0		! quenching flag (D=0,no; 1,yes)
+1.0		! quenching parameter -dE/dx (GeV/fm) in case quenching flag=1
+2.0		! p0 cutoff in HIJING for minijet productions (D=2.0)
+3.2264d0	! parton screening mass in fm^(-1) (D=3.2264d0), see below
+0		! IZPC: (D=0 forward-angle parton scatterings; 100,isotropic)
+0.47140452d0	! alpha in parton cascade
+1d6		! dpcoal in GeV
+1d6		! drcoal in fm
+0		! ihjsed: take HIJING seed from below (D=0)or at runtime(11)
+53153523	! random seed for HIJING
+8		! random seed for parton cascade
+0		! flag for Ks0 weak decays (D=0,no; 1,yes)
+1		! flag for phi decays at end of hadron cascade (D=1,yes; 0,no)
+0		! optional OSCAR output (D=0,no; 1,yes; 2,initial parton info)
+
+%%%%%%%%%% Further explanations:
+BMAX:   the upper limit HIPR1(34)+HIPR1(35)=19.87fm (dAu), 25.60fm(AuAu).
+ISOFT:  1 Default, 
+        4 String Melting.
+PARJ(41) & (42): 2.2 & 0.5/GeV^2 used for heavy ion (Au+Au, Pb+Pb) collisions,
+        while the HIJING values (0.5 & 0.9/GeV^2) describe well 
+        Nch in pp collisions and are used for d-Au collisions.
+NTMAX:	number of time-steps for hadron cascade. 
+	Use a large value (e.g. 1000) for HBT studies in heavy ion collisions.
+	Using NTMAX=3 effectively turns off hadronic cascade.
+parton screening mass (in 1/fm): its square is inversely proportional to 
+	the parton cross section. Use D=3.2264d0 for 3mb cross section, 
+	and 2.2814d0 for 6mb. Using 1d4 effectively turns off parton cascade.
+ihjsed: if =11, take HIJING random seed at runtime so that 
+	every run may be automatically different (see file 'exec').
+iksdcy: flag for Ks0 weak decays for comparison with data.
+iphidcy: flag for phi meson decays at the end of hadron cascade for comparison 
+	with data; default is yes; use 0 to turn off these decays. 
+	Note: phi meson decay during hadron cascade is always enabled.
+ioscar:	0 Dafault,
+	1 Write output in the OSCAR format,
+	2 Write out the complete parton information (ana/initial_parton_sm.dat)
+		right after string melting (before parton cascade).
