@@ -17,6 +17,7 @@
 #include "TRegexp.h"
 #include "TCanvas.h"
 #include "TStyle.h"
+#include "TProfile.h"
 
 #include<iostream>
 #include<fstream>
@@ -50,13 +51,15 @@ struct parton
 // Variables
 //-----------------------------------
 
-//Categories for the number of scattering events. NSCAT = 0, 1, 2, 3, >3
-const int NSCATT = 5;
+//Categories for the number of scattering events. NSCAT = 0, 1, 2, >=3
+const int NSCATT = 4;
 
 //Vector of vectors to contain parton evolution for a given event
 vector<vector<parton> > eventParticles;
 
 //Output histograms
+TProfile *hNscatt_pT;
+TH1F *hdN_dpT[NSCATT];
 TH1F *hDeltaRapidity[NSCATT];
 TH1F *hRapidity[NSCATT];
 
@@ -67,37 +70,87 @@ int evtnumber = 0;
 // Functions
 //-----------------------------------
 
+/*
+ * Draw spectra and v_2 for different number of scattering events
+ */
 void draw()
 {
   gStyle->SetOptStat(0);
 
   TCanvas *cDeltaRapidity = new TCanvas("cDeltaRapidity","cDeltaRapidity",500,500);
+  hDeltaRapidity[0]->Rebin(2);
+  hDeltaRapidity[1]->Rebin(2);
+  hDeltaRapidity[2]->Rebin(2);
+  hDeltaRapidity[3]->Rebin(2);
+
   hDeltaRapidity[0]->SetLineColor(kViolet-3);
   hDeltaRapidity[1]->SetLineColor(kAzure-3);
   hDeltaRapidity[2]->SetLineColor(kSpring-6);
   hDeltaRapidity[3]->SetLineColor(kOrange-3);
-  hDeltaRapidity[4]->SetLineColor(kRed);
 
+  hDeltaRapidity[0]->Scale(1/(hDeltaRapidity[0]->GetMaximum()));
+  hDeltaRapidity[1]->Scale(1/(hDeltaRapidity[1]->GetMaximum()));
+  hDeltaRapidity[2]->Scale(1/(hDeltaRapidity[2]->GetMaximum()));
+  hDeltaRapidity[3]->Scale(1/(hDeltaRapidity[3]->GetMaximum()));
+
+  hDeltaRapidity[0]->SetTitle("");
   hDeltaRapidity[0]->Draw();
   hDeltaRapidity[1]->Draw("same");
   hDeltaRapidity[2]->Draw("same");
   hDeltaRapidity[3]->Draw("same");
-  hDeltaRapidity[4]->Draw("same");
 
   TCanvas *cRapidity = new TCanvas("cRapidity","cRapidity",500,500);
+  hRapidity[0]->Rebin(2);
+  hRapidity[1]->Rebin(2);
+  hRapidity[2]->Rebin(2);
+  hRapidity[3]->Rebin(2);
+
   hRapidity[0]->SetLineColor(kViolet-3);
   hRapidity[1]->SetLineColor(kAzure-3);
   hRapidity[2]->SetLineColor(kSpring-6);
   hRapidity[3]->SetLineColor(kOrange-3);
-  hRapidity[4]->SetLineColor(kRed);
 
+  hRapidity[0]->SetTitle("");
   hRapidity[0]->Draw();
   hRapidity[1]->Draw("same");
   hRapidity[2]->Draw("same");
   hRapidity[3]->Draw("same");
-  hRapidity[4]->Draw("same");
+
+  TCanvas *cdNdpT = new TCanvas("cdNdpT","cdNdpT",500,500);
+  hdN_dpT[0]->Rebin(2);
+  hdN_dpT[1]->Rebin(2);
+  hdN_dpT[2]->Rebin(2);
+  hdN_dpT[3]->Rebin(2);
+
+  hdN_dpT[0]->SetLineColor(kViolet-3);
+  hdN_dpT[1]->SetLineColor(kAzure-3);
+  hdN_dpT[2]->SetLineColor(kSpring-6);
+  hdN_dpT[3]->SetLineColor(kOrange-3);
+
+  hdN_dpT[0]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
+  hdN_dpT[1]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
+  hdN_dpT[2]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
+  hdN_dpT[3]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
+
+  hdN_dpT[0]->Scale(1.0/(float)evtnumber);
+  hdN_dpT[1]->Scale(1.0/(float)evtnumber);
+  hdN_dpT[2]->Scale(1.0/(float)evtnumber);
+  hdN_dpT[3]->Scale(1.0/(float)evtnumber);
+
+  hdN_dpT[0]->SetTitle("");
+  hdN_dpT[0]->Draw();
+  hdN_dpT[1]->Draw("same");
+  hdN_dpT[2]->Draw("same");
+  hdN_dpT[3]->Draw("same");
+
+  TCanvas *cNscatt_pT = new TCanvas("cNscatt_pT","cNscatt_pT",500,500);
+  hNscatt_pT->Rebin(2);
+  hNscatt_pT->Draw();
 }
 
+/*
+ * Compute the rapidity of a parton given its mass and momentum
+ */
 float computeRapidity(parton p)
 {
   float px = p.px;
@@ -111,6 +164,9 @@ float computeRapidity(parton p)
   return ev.Rapidity();
 }
 
+/*
+ * Loop over partons in each event, filling desired histograms
+ */
 void processEvent()
 {
   //Each entry in the 'eventParticles' vector corresponds to a single parton and its history
@@ -120,47 +176,41 @@ void processEvent()
       int numstages = v.size();
       int numscatterings = v.size()-1;
 
-      if(numscatterings > 3) numscatterings = 4;
+      if(numscatterings > 2) numscatterings = 3;
 
+      //Fill histograms
       float y = computeRapidity(v[numstages-1]);
       float delta_y = y - computeRapidity(v[0]);
+      float pT = sqrt(pow(v[numstages-1].py,2) + pow(v[numstages-1].pz,2));
 
       hRapidity[numscatterings]->Fill(y);
       hDeltaRapidity[numscatterings]->Fill(delta_y);
-
-      //Iterate over successive scatterings of the ith parton in the event
-	/*
-      cout << endl << "--------------" << endl;
-      cout << "PARTON " << i+1 << endl;
-      cout << "--------------" << endl << endl;
-
-      for(int j=0; j<v.size(); j++)
-	{
-	  parton p = v[j];
-	  cout << "   p_" << j << " = ("<< p.px << ", " << p.py << ", " << p.pz <<")" << endl;
-	}
-	*/
+      hdN_dpT[numscatterings]->Fill(pT);
+      hNscatt_pT->Fill(pT,numscatterings,1);
     }
 }
 
-void parseHistoryFiles(char *initialInfoFile = "parton-initial-afterPropagation.dat", char *evolInfoFile = "parton-collisionsHistory.dat", char *outputFile = "evolution_out.root")
+void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+u/jdok/work/ampt/Ampt-v1.26t4-v2.26t4/ana/parton-initial-afterPropagation.dat", char *evolInfoFile = "/direct/phenix+u/jdok/work/ampt/Ampt-v1.26t4-v2.26t4/ana/parton-collisionsHistory.dat", char *outputFile = "evolution_out.root")
 {
   //Initialize histograms
   for(int i=0; i<NSCATT; i++)
     {
-      hDeltaRapidity[i] = new TH1F(Form("hDeltaRapidity_%i",i),Form("hDeltaRapidity_%i",i),500,-10,10);
-      hRapidity[i] = new TH1F(Form("hRapidity_%i",i),Form("hRapidity_%i",i),500,-5,5);
+      hDeltaRapidity[i] = new TH1F(Form("hDeltaRapidity_%i",i),Form("hDeltaRapidity_%i;#Delta y",i),500,-10,10);
+      hRapidity[i] = new TH1F(Form("hRapidity_%i",i),Form("hRapidity_%i;y",i),500,-5,5);
+      hdN_dpT[i] = new TH1F(Form("dN_dpT_%i",i),Form("dN_dpT_%i;p_{T};dN/dp_{T}",i),100,0,4);
     }
+
+  hNscatt_pT = new TProfile("hNscatt_pT","Profile of Nscatt vs pT",100,0,5,0,8);
 
   //Read initial parton information file
   ifstream myFileInitialInfo;
   myFileInitialInfo.open(initialInfoFile);
 
-  //Read parton evolution information from file
+  //Read parton evolution from file
   ifstream myFileEvolInfo;
   myFileEvolInfo.open(evolInfoFile);
 
-  if (!myFileInitialInfo || !myFileEvolInfo)
+  if (!myFileInitialInfo)
     {
       cout << "File does not exist!" << endl;
       return;
@@ -168,7 +218,6 @@ void parseHistoryFiles(char *initialInfoFile = "parton-initial-afterPropagation.
   else
     {
       cout << "--> Successfully opened file " << initialInfoFile << endl;
-      cout << "--> Successfully opened file " << evolInfoFile << endl << endl;
     }
 
   while (myFileInitialInfo)
@@ -243,11 +292,18 @@ void parseHistoryFiles(char *initialInfoFile = "parton-initial-afterPropagation.
       float spacetime_final_2[4];
        
       string regexp = Form(" event,miss,iscat,jscat= %i [0-9]+ [0-9]+ [0-9]+", evtnumber);
+      string regexp_break = Form("%i [0-9]+", evtnumber+1);
       while(myFileEvolInfo)
 	{
 	  TRegexp e(regexp);
+	  TRegexp b(regexp_break);
 	  std::getline(myFileEvolInfo,line);
 	  tline = line;
+
+	  if(tline.Contains(b))
+	    {
+	      break;
+	    }
 
 	  if(!tline.Contains(e))
 	    {
@@ -296,5 +352,4 @@ void parseHistoryFiles(char *initialInfoFile = "parton-initial-afterPropagation.
     }
 
   draw();
-  cout << "Hola Inmundo!" << endl;
 }
