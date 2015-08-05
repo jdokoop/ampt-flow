@@ -72,7 +72,7 @@ TH1F *hdN_dpT[NSCATT];
 TH1F *hDeltaRapidity[NSCATT];
 TH1F *hRapidity[NSCATT];
 TH1F *hAngle[NSCATT];
-TH2F *hEndStatev2;
+TH2F *hEndStatev2[NSCATT];
 
 //Counter for the number of events processed
 int evtnumber = 0;
@@ -90,6 +90,7 @@ void writeHistograms(char *outFileName="")
       hdN_dpT[i]->Write();
       hDeltaRapidity[i]->Write();
       hRapidity[i]->Write();
+      hEndStatev2[i]->Write();
     }
   hNscatt_pT->Write();
 }
@@ -220,7 +221,6 @@ void draw()
   hAngle[1]->Draw();
   hAngle[2]->Draw("same");
   hAngle[3]->Draw("same");
- 
 }
 
 /*
@@ -359,7 +359,7 @@ void processEvent()
       //Fill histograms
       float y = computeRapidity(v[numstages-1]);
       float delta_y = y - computeRapidity(v[0]);
-      float pT = sqrt(pow(v[numstages-1].py,2) + pow(v[numstages-1].pz,2));
+      float pT = sqrt(pow(v[numstages-1].px,2) + pow(v[numstages-1].py,2));
       float phi = computePhi(v[numstages-1]);
       float v2 = TMath::Cos(2*(phi-psi2_angle));
 
@@ -381,6 +381,7 @@ void processEvent()
       hDeltaRapidity[numscatterings]->Fill(delta_y);
       hdN_dpT[numscatterings]->Fill(pT);
       hv2_pT[numscatterings]->Fill(pT,v2,1);
+      hEndStatev2[numscatterings]->Fill(v2,pT);
       hNscatt_pT->Fill(pT,numscatterings,1);
     }
 }
@@ -396,12 +397,12 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Co
       hDeltaRapidity[i] = new TH1F(Form("hDeltaRapidity_%i",i),Form("hDeltaRapidity_%i;#Delta y",i),500,-10,10);
       hRapidity[i] = new TH1F(Form("hRapidity_%i",i),Form("hRapidity_%i;y",i),500,-5,5);
       hdN_dpT[i] = new TH1F(Form("dN_dpT_%i",i),Form("dN_dpT_%i;p_{T};dN/dp_{T}",i),100,0,4);
-      hv2_pT[i] = new TProfile(Form("hv2_pT_%i",i),Form("hv2_pT_%i;p_{T};v_{2}",i),100,0,5,0,0.2);
+      hv2_pT[i] = new TProfile(Form("hv2_pT_%i",i),Form("hv2_pT_%i;p_{T};v_{2}",i),50,0,5,-0.2,0.2);
       hAngle[i] = new TH1F(Form("hAngle_%i",i),Form("hAngle_%i;#theta",i),500,0,2*TMath::Pi());
+      hEndStatev2[i] = new TH2F(Form("hEndStatev2_%i",i),Form("hEndStatev2_%i",i),1200,-1.2,1.2,50,0,5);
     }
 
   hNscatt_pT = new TProfile("hNscatt_pT","Profile of Nscatt vs pT",100,0,5,0,8);
-  hEndStatev2 = new TH2F("hEndStatev2","hEndStatev2",1200,-1.2,1.2,50,0,5);
 
   //Read initial parton information file
   ifstream myFileInitialInfo;
@@ -580,6 +581,6 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Co
       processEvent();
       eventParticles.clear();
     }
-  //writeHistograms(outputFile);
+  writeHistograms(outputFile);
   draw();
 }
