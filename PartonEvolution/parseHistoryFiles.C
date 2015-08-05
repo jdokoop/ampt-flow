@@ -397,12 +397,12 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Co
       hDeltaRapidity[i] = new TH1F(Form("hDeltaRapidity_%i",i),Form("hDeltaRapidity_%i;#Delta y",i),500,-10,10);
       hRapidity[i] = new TH1F(Form("hRapidity_%i",i),Form("hRapidity_%i;y",i),500,-5,5);
       hdN_dpT[i] = new TH1F(Form("dN_dpT_%i",i),Form("dN_dpT_%i;p_{T};dN/dp_{T}",i),100,0,4);
-      hv2_pT[i] = new TProfile(Form("hv2_pT_%i",i),Form("hv2_pT_%i;p_{T};v_{2}",i),50,0,5,-0.2,0.2);
+      hv2_pT[i] = new TProfile(Form("hv2_pT_%i",i),Form("hv2_pT_%i;p_{T};v_{2}",i),50,0,5,-2,2);
       hAngle[i] = new TH1F(Form("hAngle_%i",i),Form("hAngle_%i;#theta",i),500,0,2*TMath::Pi());
       hEndStatev2[i] = new TH2F(Form("hEndStatev2_%i",i),Form("hEndStatev2_%i",i),1200,-1.2,1.2,50,0,5);
     }
 
-  hNscatt_pT = new TProfile("hNscatt_pT","Profile of Nscatt vs pT",100,0,5,0,8);
+  hNscatt_pT = new TProfile("hNscatt_pT","Profile of Nscatt vs pT",100,0,5,0,20);
 
   //Read initial parton information file
   ifstream myFileInitialInfo;
