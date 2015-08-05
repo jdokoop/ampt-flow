@@ -47,6 +47,9 @@ struct parton
 
   //Mass
   float m;
+
+  //Angle by which it scatters in the CoM frame
+  float angleCMS;
 };
 
 //-----------------------------------
@@ -68,7 +71,7 @@ TProfile *hv2_pT[NSCATT];
 TH1F *hdN_dpT[NSCATT];
 TH1F *hDeltaRapidity[NSCATT];
 TH1F *hRapidity[NSCATT];
-TH1F *hAngle;
+TH1F *hAngle[NSCATT];
 TH2F *hEndStatev2;
 
 //Counter for the number of events processed
@@ -205,8 +208,19 @@ void draw()
   hNscatt_pT->Draw();
 
   TCanvas *cScatteringAngle = new TCanvas("cScatteringAngle","cScatteringAngle",500,500);
-  hAngle->Rebin(2);
-  hAngle->Draw();
+  hAngle[0]->SetLineColor(kViolet-3);
+  hAngle[1]->SetLineColor(kAzure-3);
+  hAngle[2]->SetLineColor(kSpring-6);
+  hAngle[3]->SetLineColor(kOrange-3);
+
+  hAngle[1]->Scale(1.0/(hAngle[1]->GetMaximum()));
+  hAngle[2]->Scale(1.0/(hAngle[2]->GetMaximum()));
+  hAngle[3]->Scale(1.0/(hAngle[3]->GetMaximum()));
+
+  hAngle[1]->Draw();
+  hAngle[2]->Draw("same");
+  hAngle[3]->Draw("same");
+ 
 }
 
 /*
@@ -214,7 +228,7 @@ void draw()
  * Partons 1 and 2 constitute the initial state
  * Partons 3 and 4 constitute the final state
  */
-void boostCMS(parton p1, parton p2, parton p3, parton p4)
+void boostCMS(parton p1, parton p2, parton p3, parton p4, float *angle_1_4, float *angle_2_3)
 {
   //cout << "-> " << p1.px << ", " << p1.py << ", " << p1.pz << endl;
   //cout << "-> " << p2.px << ", " << p2.py << ", " << p2.pz << endl;
@@ -265,19 +279,31 @@ void boostCMS(parton p1, parton p2, parton p3, parton p4)
   //cout << ev3.Px() << ", " << ev3.Py() << "; " << ev3.Pz() << endl;
   //cout << ev4.Px() << ", " << ev4.Py() << "; " << ev4.Pz() << endl;
 
-  float angle = ev2.Angle(ev3.Vect());
+  float angleLeft = ev1.Angle(ev4.Vect());
+  float angleRight = ev2.Angle(ev3.Vect());
 
   //Wrap around to have angle between 0 and 2Pi
-  if(angle < 0)
+  if(angleLeft < 0)
     {
-      angle = angle + 2*TMath::Pi();
+      angleLeft = angleLeft + 2*TMath::Pi();
     }
-  else if(angle > 2*TMath::Pi())
+  else if(angleLeft > 2*TMath::Pi())
     {
-      angle = angle - 2*TMath::Pi();
+      angleLeft = angleLeft - 2*TMath::Pi();
     }
 
-  hAngle->Fill(angle);
+  if(angleRight < 0)
+    {
+      angleRight = angleRight + 2*TMath::Pi();
+    }
+  else if(angleRight > 2*TMath::Pi())
+    {
+      angleRight = angleRight - 2*TMath::Pi();
+    }
+
+  //hAngle->Fill(angle);
+  (*angle_1_4) = angleLeft;
+  (*angle_2_3) = angleRight;
 }
 
 /*
@@ -337,6 +363,20 @@ void processEvent()
       float phi = computePhi(v[numstages-1]);
       float v2 = TMath::Cos(2*(phi-psi2_angle));
 
+      //Fill histograms for scattering angle in CoM for different number of scatterings
+      for(int j=0; j<v.size(); j++)
+	{
+	  float scattAngle = v[j].angleCMS;
+	  if(j<=2)
+	    {
+	      hAngle[j]->Fill(scattAngle);
+	    }
+	  else
+	    {
+	      hAngle[3]->Fill(scattAngle);
+	    }
+	}
+
       hRapidity[numscatterings]->Fill(y);
       hDeltaRapidity[numscatterings]->Fill(delta_y);
       hdN_dpT[numscatterings]->Fill(pT);
@@ -357,11 +397,11 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Co
       hRapidity[i] = new TH1F(Form("hRapidity_%i",i),Form("hRapidity_%i;y",i),500,-5,5);
       hdN_dpT[i] = new TH1F(Form("dN_dpT_%i",i),Form("dN_dpT_%i;p_{T};dN/dp_{T}",i),100,0,4);
       hv2_pT[i] = new TProfile(Form("hv2_pT_%i",i),Form("hv2_pT_%i;p_{T};v_{2}",i),100,0,5,0,0.2);
+      hAngle[i] = new TH1F(Form("hAngle_%i",i),Form("hAngle_%i;#theta",i),500,0,2*TMath::Pi());
     }
 
   hNscatt_pT = new TProfile("hNscatt_pT","Profile of Nscatt vs pT",100,0,5,0,8);
   hEndStatev2 = new TH2F("hEndStatev2","hEndStatev2",1200,-1.2,1.2,50,0,5);
-  hAngle = new TH1F("hAngle","hAngle;#theta",500,0,2*TMath::Pi());
 
   //Read initial parton information file
   ifstream myFileInitialInfo;
@@ -420,6 +460,7 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Co
 	  part.z = spacetime[2];
 	  part.t = spacetime[3];
 	  part.m = mass;
+	  part.angleCMS = -9999;
 
 	  //Add the parton as the first stage of its own scattering evolution
 	  vector<parton> aux;
@@ -524,7 +565,12 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Co
 	  part4.m = mass_init_2;
  
 	  //Find the angular distribution of scattered particles in the CoM frame
-	  boostCMS(part3, part4, part1, part2);	   
+	  float angle_1_4 = -9999.0;
+	  float angle_2_3 = -9999.0;
+	  boostCMS(part3, part4, part1, part2, &angle_1_4, &angle_2_3);	   
+
+	  part1.angleCMS = angle_2_3;
+	  part2.angleCMS = angle_1_4;
 
 	  eventParticles[partonindex1-1].push_back(part1);
 	  eventParticles[partonindex2-1].push_back(part2);
