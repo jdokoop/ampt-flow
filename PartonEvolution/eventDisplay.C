@@ -7,7 +7,6 @@
 // 07-29-2015
 //----------------------------------------------------
 #include "TLorentzVector.h"
-#include "TMCParticle.h"
 #include "TFile.h"
 #include "TNtuple.h"
 #include "TH1.h"
@@ -17,10 +16,12 @@
 #include "TRegexp.h"
 #include "TCanvas.h"
 #include "TStyle.h"
+#include "TROOT.h"
 #include "TProfile.h"
 #include "TArrow.h"
 #include "TEllipse.h"
 #include "TColor.h"
+#include "TPaletteAxis.h"
 
 #include<iostream>
 #include<fstream>
@@ -71,30 +72,97 @@ TH2F *hDisplay;
 //Counter for the number of events processed
 int evtnumber = 0;
 
+//Parton radius for display
+const float PARTON_RADIUS = 0.02;
+
 //-----------------------------------
 // Functions
 //-----------------------------------
 
-void initializeDisplay()
+/*
+ * Determines if a given parton occupies the same location as any other *scattered* parton
+ */
+bool partonOverlap(float x, float y)
 {
-  //Initialize histograms
-  hDisplay = new TH2F("hDisplay","Single AMPT Event;x;y",600,-3,3,600,-3,3);
+  int count = 0;
+  for(int i=0; i<eventParticles.size(); i++)
+    {
+      for(int j=0; j<eventParticles[i].size() && eventParticles[i].size()>1; j++)
+	{
+	  parton p = eventParticles[i][j];
 
-  //Displace partons occupying same location, just for ease of visualization
+	  if(p.x == x && p.y == y)
+	    {
+	      count++;
+	    }
+	}
+    }
+
+  if(count >=2)
+    {
+      return true;
+    }
+
+  return false;
 }
 
 /*
- * Draw spectra and v_2 for different number of scattering events
+ * Prepare parton information for displaying by adusting positions of overlapping partons
+ */
+void initializeDisplay()
+{
+  //Displace partons occupying same location, just for ease of visualization
+  for(int i=0; i<eventParticles.size(); i++)
+    {
+      for(int j=0; j<eventParticles[i].size() && eventParticles[i].size()>1; j++)
+	{
+	  parton p = eventParticles[i][j];
+
+	  if(partonOverlap(p.x,p.y))
+	    {
+	      eventParticles[i][j].x = eventParticles[i][j].x+0.15*PARTON_RADIUS;
+	      eventParticles[i][j].y = eventParticles[i][j].y+0.15*PARTON_RADIUS;
+	    }
+	}
+    }
+}
+
+/*
+ * Draw event display
  */
 void draw()
 {
   gStyle->SetOptStat(0);
   TCanvas *c = new TCanvas("c","Event Display",700,700);
-  hDisplay->Draw("COLZ");
-  //hDisplay->GetXaxis()->SetRangeUser(0.5,1);
-  //hDisplay->GetYaxis()->SetRangeUser(-0.3,0.15);
+  gPad->SetFillColor(kBlack);
+  hDisplay->GetXaxis()->SetAxisColor(kWhite);
+  hDisplay->GetYaxis()->SetAxisColor(kWhite);
+  hDisplay->GetXaxis()->SetLabelColor(kWhite);
+  hDisplay->GetYaxis()->SetLabelColor(kWhite);
+  hDisplay->GetXaxis()->SetTitleColor(kWhite);
+  hDisplay->GetYaxis()->SetTitleColor(kWhite);
+  hDisplay->GetXaxis()->SetRangeUser(-0.2,2.6);
+  hDisplay->GetYaxis()->SetRangeUser(-1.8,2.3);
 
-  Color_t colors[8] = {kViolet, kAzure-3, kGreen-3, kOrange-3, kRed, kGray, kPink+9, kSpring-9};
+  //Define gray COLZ scale for 'spectator' background
+  UInt_t Number = 2;
+  Double_t Red[2]   = { 0.00, 1.00};
+  Double_t Green[2] = { 0.00, 1.00};
+  Double_t Blue[2]  = { 0.00, 1.00};
+  Double_t Stops[2] = { 0.00, 1.00};
+
+  Int_t nb=50;
+  TColor::CreateGradientColorTable(Number,Stops,Red,Green,Blue,nb);
+  
+  hDisplay->SetContour(nb);  
+  
+  hDisplay->Draw("COLZ");
+  gPad->Update();
+  TPaletteAxis *palette1 = (TPaletteAxis*) hDisplay->GetListOfFunctions()->FindObject("palette");
+  palette1->SetLineColor(kWhite);
+  palette1->SetLabelColor(kWhite);
+
+  Color_t colorPartons[8] = {kViolet, kAzure-3, kGreen-3, kOrange-3, kRed, kGray, kPink+9, kSpring-9};
   
   int cindex = 0;
   for(int i=0; i<circles.size(); i++)
@@ -102,9 +170,9 @@ void draw()
       vector<TEllipse*> t = circles[i];
       for(int j=0; j<t.size(); j++)
 	{
-	  t[j]->SetLineColor(colors[cindex]);
+	  t[j]->SetLineColor(colorPartons[cindex]);
+	  t[j]->SetFillColorAlpha(kWhite,0);
 	  t[j]->Draw("same");
-	  cout << "cindex " << cindex << endl;
 	}
 
       if(t.size() > 0) cindex++;
@@ -117,9 +185,9 @@ void draw()
       for(int j=0; j<ta.size(); j++)
 	{
 	  ta[j]->SetLineWidth(2);
-	  ta[j]->SetLineColor(colors[cindex]);
-	  ta[j]->SetAngle(60);
-	  ta[j]->Draw("same");
+	  ta[j]->SetLineColor(colorPartons[cindex]);
+	  //ta[j]->SetAngle(60);
+	  ta[j]->Draw();
 	}
 
       if(ta.size() > 0) cindex++;
@@ -179,11 +247,11 @@ void processEvent()
       float z_initial = v[0].z;
 
       //Fill in scattered parton positions
-      if(numscatterings > 0)
+      if(numscatterings > -1)
 	{
 	  for(int j=0; j<numstages; j++)
 	    {
-	      //hDisplay->Fill(v[j].x,v[j].y);
+	      hDisplay->Fill(v[j].x,v[j].y);
 	    }
 	}
 
@@ -191,7 +259,7 @@ void processEvent()
       vector<TArrow*> partonArrows;
       for(int j=1; j<numstages && numstages>1; j++)
 	{
-	  TArrow *t = new TArrow(v[j-1].x, v[j-1].y, v[j].x, v[j].y,0.05,"|>");
+	  TArrow *t = new TArrow(v[j-1].x, v[j-1].y, v[j].x, v[j].y,0.05,"->-");
 	  partonArrows.push_back(t);
 	}
       arrows.push_back(partonArrows);
@@ -201,7 +269,7 @@ void processEvent()
       vector<TEllipse*> partonCircles;
       for(int j=0; j<numstages && numstages>1; j++)
 	{
-	  TEllipse *t = new TEllipse(v[j].x,v[j].y,0.02,0.02);
+	  TEllipse *t = new TEllipse(v[j].x,v[j].y,PARTON_RADIUS,PARTON_RADIUS);
 	  partonCircles.push_back(t);
 	}
       circles.push_back(partonCircles);
@@ -226,7 +294,7 @@ void processEvent()
 void eventDisplay(char *initialInfoFile = "parton-initial-afterPropagation.dat", char *evolInfoFile = "parton-collisionsHistory.dat", char *outputFile = "evolution_out.root")
 {
   //Initialize event display
-  initializeDisplay();
+  hDisplay = new TH2F("hDisplay","Single AMPT Event;x;y",100,-3,3,100,-3,3);
 
   //Read initial parton information file
   ifstream myFileInitialInfo;
@@ -373,6 +441,7 @@ void eventDisplay(char *initialInfoFile = "parton-initial-afterPropagation.dat",
 	}
 
       //Run analysis on particles on an event-by-event basis
+      initializeDisplay();
       processEvent();
       eventParticles.clear();
     }
