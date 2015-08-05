@@ -18,6 +18,8 @@
 #include "TCanvas.h"
 #include "TStyle.h"
 #include "TProfile.h"
+#include "TMath.h"
+#include "TVector3.h"
 
 #include<iostream>
 #include<fstream>
@@ -57,11 +59,17 @@ const int NSCATT = 4;
 //Vector of vectors to contain parton evolution for a given event
 vector<vector<parton> > eventParticles;
 
+//Vector to contain the participant plane angle for every event
+vector<float> psi2;
+
 //Output histograms
 TProfile *hNscatt_pT;
+TProfile *hv2_pT[NSCATT];
 TH1F *hdN_dpT[NSCATT];
 TH1F *hDeltaRapidity[NSCATT];
 TH1F *hRapidity[NSCATT];
+TH1F *hAngle;
+TH2F *hEndStatev2;
 
 //Counter for the number of events processed
 int evtnumber = 0;
@@ -69,6 +77,45 @@ int evtnumber = 0;
 //-----------------------------------
 // Functions
 //-----------------------------------
+
+void writeHistograms(char *outFileName="")
+{
+  TFile* fout = new TFile(outFileName, "RECREATE");
+  for(int i=0; i<NSCATT; i++)
+    {
+      hv2_pT[i]->Write();
+      hdN_dpT[i]->Write();
+      hDeltaRapidity[i]->Write();
+      hRapidity[i]->Write();
+    }
+  hNscatt_pT->Write();
+}
+
+/*
+ * Load previously calculated participant plane angles for each event into a vector
+ */
+void loadParticipantPlanes()
+{
+  ifstream myFilePsi2;
+  myFilePsi2.open("psi_2.txt");
+
+  if (!myFilePsi2)
+    {
+      cout << "File does not exist!" << endl;
+      return;
+    }
+  else
+    {
+      cout << "--> Successfully opened participant plane file" << endl;
+    }
+
+  float angle = 0;
+  while(myFilePsi2)
+    {
+      myFilePsi2 >> angle;
+      psi2.push_back(angle);
+    }
+}
 
 /*
  * Draw spectra and v_2 for different number of scattering events
@@ -137,15 +184,100 @@ void draw()
   hdN_dpT[2]->Scale(1.0/(float)evtnumber);
   hdN_dpT[3]->Scale(1.0/(float)evtnumber);
 
-  hdN_dpT[0]->SetTitle("");
   hdN_dpT[0]->Draw();
   hdN_dpT[1]->Draw("same");
   hdN_dpT[2]->Draw("same");
   hdN_dpT[3]->Draw("same");
 
+  TCanvas *cv2 = new TCanvas("cv2","cv2",500,500);
+  hv2_pT[0]->SetLineColor(kViolet-3);
+  hv2_pT[1]->SetLineColor(kAzure-3);
+  hv2_pT[2]->SetLineColor(kSpring-6);
+  hv2_pT[3]->SetLineColor(kOrange-3);
+
+  hv2_pT[0]->Draw();
+  hv2_pT[1]->Draw("same");
+  hv2_pT[2]->Draw("same");
+  hv2_pT[3]->Draw("same");
+
   TCanvas *cNscatt_pT = new TCanvas("cNscatt_pT","cNscatt_pT",500,500);
   hNscatt_pT->Rebin(2);
   hNscatt_pT->Draw();
+
+  TCanvas *cScatteringAngle = new TCanvas("cScatteringAngle","cScatteringAngle",500,500);
+  hAngle->Rebin(2);
+  hAngle->Draw();
+}
+
+/*
+ * Boost collision between to partons to center of mass frame
+ * Partons 1 and 2 constitute the initial state
+ * Partons 3 and 4 constitute the final state
+ */
+void boostCMS(parton p1, parton p2, parton p3, parton p4)
+{
+  //cout << "-> " << p1.px << ", " << p1.py << ", " << p1.pz << endl;
+  //cout << "-> " << p2.px << ", " << p2.py << ", " << p2.pz << endl;
+  //cout << "-> " << p3.px << ", " << p3.py << ", " << p3.pz << endl;
+  //cout << "-> " << p4.px << ", " << p4.py << ", " << p4.pz << endl;
+
+  float px1 = p1.px;
+  float py1 = p1.py;
+  float pz1 = p1.pz;
+  float mass1 = p1.m;
+  float energy1 =  sqrt (pow(px1,2)+pow(py1,2)+pow(pz1,2)+pow(mass1,2));
+  TLorentzVector ev1(px1,py1,pz1,energy1);
+
+  float px2 = p2.px;
+  float py2 = p2.py;
+  float pz2 = p2.pz;
+  float mass2 = p2.m;
+  float energy2 =  sqrt (pow(px2,2)+pow(py2,2)+pow(pz2,2)+pow(mass2,2));
+  TLorentzVector ev2(px2,py2,pz2,energy2);
+
+  float px3 = p3.px;
+  float py3 = p3.py;
+  float pz3 = p3.pz;
+  float mass3 = p3.m;
+  float energy3 =  sqrt (pow(px3,2)+pow(py3,2)+pow(pz3,2)+pow(mass3,2));
+  TLorentzVector ev3(px3,py3,pz3,energy3);
+
+  float px4 = p4.px;
+  float py4 = p4.py;
+  float pz4 = p4.pz;
+  float mass4 = p4.m;
+  float energy4 = sqrt (pow(px4,2)+pow(py4,2)+pow(pz4,2)+pow(mass4,2));
+  TLorentzVector ev4(px4,py4,pz4,energy4);
+
+  //Define boost vector to CoM
+  TLorentzVector cms = ev1+ev2;
+  ev1.Boost(-cms.BoostVector());
+  ev2.Boost(-cms.BoostVector());
+  ev3.Boost(-cms.BoostVector());
+  ev4.Boost(-cms.BoostVector());
+  cms.Boost(-cms.BoostVector());
+
+  //Total momentum in CoM should be identically zero
+  //cout << "--Total momentum in CoM = " << cms.P() << endl << endl;
+
+  //cout << ev1.Px() << ", " << ev1.Py() << "; " << ev1.Pz() << endl;
+  //cout << ev2.Px() << ", " << ev2.Py() << "; " << ev2.Pz() << endl;
+  //cout << ev3.Px() << ", " << ev3.Py() << "; " << ev3.Pz() << endl;
+  //cout << ev4.Px() << ", " << ev4.Py() << "; " << ev4.Pz() << endl;
+
+  float angle = ev2.Angle(ev3.Vect());
+
+  //Wrap around to have angle between 0 and 2Pi
+  if(angle < 0)
+    {
+      angle = angle + 2*TMath::Pi();
+    }
+  else if(angle > 2*TMath::Pi())
+    {
+      angle = angle - 2*TMath::Pi();
+    }
+
+  hAngle->Fill(angle);
 }
 
 /*
@@ -165,13 +297,33 @@ float computeRapidity(parton p)
 }
 
 /*
+ * Compute azimuthal angle of a given parton
+ */
+float computePhi(parton p)
+{
+  float px = p.px;
+  float py = p.py;
+  float pz = p.pz;
+  float mass = p.m;
+
+  float energy =  sqrt (pow(px,2)+pow(py,2)+pow(pz,2)+pow(mass,2));
+  TLorentzVector ev(px,py,pz,energy);
+
+  return ev.Phi();
+}
+
+/*
  * Loop over partons in each event, filling desired histograms
  */
 void processEvent()
 {
+  //Get participant plane angle for the event at hand
+  float psi2_angle = psi2[evtnumber-1];
+  
   //Each entry in the 'eventParticles' vector corresponds to a single parton and its history
   for(int i=0; i<eventParticles.size(); i++)
     {   
+      //Determine number of scattering events undergone by the parton
       vector<parton> v = eventParticles[i];
       int numstages = v.size();
       int numscatterings = v.size()-1;
@@ -182,25 +334,34 @@ void processEvent()
       float y = computeRapidity(v[numstages-1]);
       float delta_y = y - computeRapidity(v[0]);
       float pT = sqrt(pow(v[numstages-1].py,2) + pow(v[numstages-1].pz,2));
+      float phi = computePhi(v[numstages-1]);
+      float v2 = TMath::Cos(2*(phi-psi2_angle));
 
       hRapidity[numscatterings]->Fill(y);
       hDeltaRapidity[numscatterings]->Fill(delta_y);
       hdN_dpT[numscatterings]->Fill(pT);
+      hv2_pT[numscatterings]->Fill(pT,v2,1);
       hNscatt_pT->Fill(pT,numscatterings,1);
     }
 }
 
-void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+u/jdok/work/ampt/Ampt-v1.26t4-v2.26t4/ana/parton-initial-afterPropagation.dat", char *evolInfoFile = "/direct/phenix+u/jdok/work/ampt/Ampt-v1.26t4-v2.26t4/ana/parton-collisionsHistory.dat", char *outputFile = "evolution_out.root")
+void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Correlation/ampt_vn_pT/data/parton-initial-afterPropagation.dat", char *evolInfoFile = "/direct/phenix+hhj/jdok/He3Au_Correlation/ampt_vn_pT/data/parton-collisionsHistory.dat", char *outputFile = "evolution_out.root")
 {
+  //Load participant plane angles from file
+  loadParticipantPlanes();
+
   //Initialize histograms
   for(int i=0; i<NSCATT; i++)
     {
       hDeltaRapidity[i] = new TH1F(Form("hDeltaRapidity_%i",i),Form("hDeltaRapidity_%i;#Delta y",i),500,-10,10);
       hRapidity[i] = new TH1F(Form("hRapidity_%i",i),Form("hRapidity_%i;y",i),500,-5,5);
       hdN_dpT[i] = new TH1F(Form("dN_dpT_%i",i),Form("dN_dpT_%i;p_{T};dN/dp_{T}",i),100,0,4);
+      hv2_pT[i] = new TProfile(Form("hv2_pT_%i",i),Form("hv2_pT_%i;p_{T};v_{2}",i),100,0,5,0,0.2);
     }
 
   hNscatt_pT = new TProfile("hNscatt_pT","Profile of Nscatt vs pT",100,0,5,0,8);
+  hEndStatev2 = new TH2F("hEndStatev2","hEndStatev2",1200,-1.2,1.2,50,0,5);
+  hAngle = new TH1F("hAngle","hAngle;#theta",500,0,2*TMath::Pi());
 
   //Read initial parton information file
   ifstream myFileInitialInfo;
@@ -341,6 +502,29 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+u/jdok/work/ampt/
 	  part2.z = spacetime_final_2[2];
 	  part2.t = spacetime_final_2[3];
 	  part2.m = mass_final_2;
+	  
+	  parton part3;
+	  part3.px = pvec_init_1[0];
+	  part3.py = pvec_init_1[1];
+	  part3.pz = pvec_init_1[2];
+	  part3.x = spacetime_init_1[0];
+	  part3.y = spacetime_init_1[1];
+	  part3.z = spacetime_init_1[2];
+	  part3.t = spacetime_init_1[3];
+	  part3.m = mass_init_1;
+
+	  parton part4;
+	  part4.px = pvec_init_2[0];
+	  part4.py = pvec_init_2[1];
+	  part4.pz = pvec_init_2[2];
+	  part4.x = spacetime_init_2[0];
+	  part4.y = spacetime_init_2[1];
+	  part4.z = spacetime_init_2[2];
+	  part4.t = spacetime_init_2[3];
+	  part4.m = mass_init_2;
+ 
+	  //Find the angular distribution of scattered particles in the CoM frame
+	  boostCMS(part3, part4, part1, part2);	   
 
 	  eventParticles[partonindex1-1].push_back(part1);
 	  eventParticles[partonindex2-1].push_back(part2);
@@ -350,6 +534,6 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+u/jdok/work/ampt/
       processEvent();
       eventParticles.clear();
     }
-
+  //writeHistograms(outputFile);
   draw();
 }
