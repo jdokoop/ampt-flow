@@ -1,0 +1,4 @@
+ 2 * 8 ->d+ 3 (regular d prodn)    @evt# 8 @nt= 146
+ 8 * 2 ->d+ 4 (regular d prodn)    @evt# 32 @nt= 23
+ 1 * 7 ->d+ 3 (regular d prodn)    @evt# 39 @nt= 24
+  d+ 4 ->BB (regular d destrn) @evt# 39 @nt= 29 lb1,2= 2 8
