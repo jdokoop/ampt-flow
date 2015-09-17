@@ -56,8 +56,8 @@ struct parton
 // Variables
 //-----------------------------------
 
-//Categories for the number of scattering events. NSCAT = 0, 1, 2, >=3
-const int NSCATT = 4;
+//Categories for the number of scattering events. NSCAT = 0, 1, >=2
+const int NSCATT = 3;
 
 //Vector of vectors to contain parton evolution for a given event
 vector<vector<parton> > eventParticles;
@@ -68,10 +68,14 @@ vector<float> psi2;
 //Output histograms
 TProfile *hNscatt_pT;
 TProfile *hv2_pT[NSCATT];
+TProfile *hv2_pT_mideta[NSCATT];
 TH1F *hdN_dpT[NSCATT];
 TH1F *hDeltaRapidity[NSCATT];
 TH1F *hRapidity[NSCATT];
 TH1F *hAngle[NSCATT];
+TH1F *hNscatt;
+TH1F *hNscatt_mideta;
+TProfile *hv2_pT_finalstate;
 TH2F *hEndStatev2[NSCATT];
 
 //Counter for the number of events processed
@@ -87,12 +91,17 @@ void writeHistograms(char *outFileName="")
   for(int i=0; i<NSCATT; i++)
     {
       hv2_pT[i]->Write();
+      hv2_pT_mideta[i]->Write();
       hdN_dpT[i]->Write();
       hDeltaRapidity[i]->Write();
       hRapidity[i]->Write();
       hEndStatev2[i]->Write();
+      hAngle[i]->Write();
     }
   hNscatt_pT->Write();
+  hNscatt->Write();
+  hNscatt_mideta->Write();
+  hv2_pT_finalstate->Write();
 }
 
 /*
@@ -132,77 +141,77 @@ void draw()
   hDeltaRapidity[0]->Rebin(2);
   hDeltaRapidity[1]->Rebin(2);
   hDeltaRapidity[2]->Rebin(2);
-  hDeltaRapidity[3]->Rebin(2);
+  //hDeltaRapidity[3]->Rebin(2);
 
   hDeltaRapidity[0]->SetLineColor(kViolet-3);
   hDeltaRapidity[1]->SetLineColor(kAzure-3);
   hDeltaRapidity[2]->SetLineColor(kSpring-6);
-  hDeltaRapidity[3]->SetLineColor(kOrange-3);
+  //hDeltaRapidity[3]->SetLineColor(kOrange-3);
 
   hDeltaRapidity[0]->Scale(1/(hDeltaRapidity[0]->GetMaximum()));
   hDeltaRapidity[1]->Scale(1/(hDeltaRapidity[1]->GetMaximum()));
   hDeltaRapidity[2]->Scale(1/(hDeltaRapidity[2]->GetMaximum()));
-  hDeltaRapidity[3]->Scale(1/(hDeltaRapidity[3]->GetMaximum()));
+  //hDeltaRapidity[3]->Scale(1/(hDeltaRapidity[3]->GetMaximum()));
 
   hDeltaRapidity[0]->SetTitle("");
   hDeltaRapidity[0]->Draw();
   hDeltaRapidity[1]->Draw("same");
   hDeltaRapidity[2]->Draw("same");
-  hDeltaRapidity[3]->Draw("same");
+  //hDeltaRapidity[3]->Draw("same");
 
   TCanvas *cRapidity = new TCanvas("cRapidity","cRapidity",500,500);
   hRapidity[0]->Rebin(2);
   hRapidity[1]->Rebin(2);
   hRapidity[2]->Rebin(2);
-  hRapidity[3]->Rebin(2);
+  //hRapidity[3]->Rebin(2);
 
   hRapidity[0]->SetLineColor(kViolet-3);
   hRapidity[1]->SetLineColor(kAzure-3);
   hRapidity[2]->SetLineColor(kSpring-6);
-  hRapidity[3]->SetLineColor(kOrange-3);
+  //hRapidity[3]->SetLineColor(kOrange-3);
 
   hRapidity[0]->SetTitle("");
   hRapidity[0]->Draw();
   hRapidity[1]->Draw("same");
   hRapidity[2]->Draw("same");
-  hRapidity[3]->Draw("same");
+  //hRapidity[3]->Draw("same");
 
   TCanvas *cdNdpT = new TCanvas("cdNdpT","cdNdpT",500,500);
   hdN_dpT[0]->Rebin(2);
   hdN_dpT[1]->Rebin(2);
   hdN_dpT[2]->Rebin(2);
-  hdN_dpT[3]->Rebin(2);
+  //hdN_dpT[3]->Rebin(2);
 
   hdN_dpT[0]->SetLineColor(kViolet-3);
   hdN_dpT[1]->SetLineColor(kAzure-3);
   hdN_dpT[2]->SetLineColor(kSpring-6);
-  hdN_dpT[3]->SetLineColor(kOrange-3);
+  //hdN_dpT[3]->SetLineColor(kOrange-3);
 
   hdN_dpT[0]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
   hdN_dpT[1]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
   hdN_dpT[2]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
-  hdN_dpT[3]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
+  //hdN_dpT[3]->Scale(1.0/(hdN_dpT[0]->GetBinWidth(1)));
 
   hdN_dpT[0]->Scale(1.0/(float)evtnumber);
   hdN_dpT[1]->Scale(1.0/(float)evtnumber);
   hdN_dpT[2]->Scale(1.0/(float)evtnumber);
-  hdN_dpT[3]->Scale(1.0/(float)evtnumber);
+  //hdN_dpT[3]->Scale(1.0/(float)evtnumber);
 
   hdN_dpT[0]->Draw();
   hdN_dpT[1]->Draw("same");
   hdN_dpT[2]->Draw("same");
-  hdN_dpT[3]->Draw("same");
+  //hdN_dpT[3]->Draw("same");
 
   TCanvas *cv2 = new TCanvas("cv2","cv2",500,500);
   hv2_pT[0]->SetLineColor(kViolet-3);
   hv2_pT[1]->SetLineColor(kAzure-3);
   hv2_pT[2]->SetLineColor(kSpring-6);
-  hv2_pT[3]->SetLineColor(kOrange-3);
+  //hv2_pT[3]->SetLineColor(kOrange-3);
 
   hv2_pT[0]->Draw();
   hv2_pT[1]->Draw("same");
   hv2_pT[2]->Draw("same");
-  hv2_pT[3]->Draw("same");
+  //hv2_pT[3]->Draw("same");
 
   TCanvas *cNscatt_pT = new TCanvas("cNscatt_pT","cNscatt_pT",500,500);
   hNscatt_pT->Rebin(2);
@@ -212,15 +221,15 @@ void draw()
   hAngle[0]->SetLineColor(kViolet-3);
   hAngle[1]->SetLineColor(kAzure-3);
   hAngle[2]->SetLineColor(kSpring-6);
-  hAngle[3]->SetLineColor(kOrange-3);
+  //hAngle[3]->SetLineColor(kOrange-3);
 
   hAngle[1]->Scale(1.0/(hAngle[1]->GetMaximum()));
   hAngle[2]->Scale(1.0/(hAngle[2]->GetMaximum()));
-  hAngle[3]->Scale(1.0/(hAngle[3]->GetMaximum()));
+  //hAngle[3]->Scale(1.0/(hAngle[3]->GetMaximum()));
 
   hAngle[1]->Draw();
   hAngle[2]->Draw("same");
-  hAngle[3]->Draw("same");
+  //hAngle[3]->Draw("same");
 }
 
 /*
@@ -352,9 +361,7 @@ void processEvent()
       //Determine number of scattering events undergone by the parton
       vector<parton> v = eventParticles[i];
       int numstages = v.size();
-      int numscatterings = v.size()-1;
-
-      if(numscatterings > 2) numscatterings = 3;
+      int numscatterings = v.size()-1; //number of scattering events = number of stages - 1
 
       //Fill histograms
       float y = computeRapidity(v[numstages-1]);
@@ -363,17 +370,26 @@ void processEvent()
       float phi = computePhi(v[numstages-1]);
       float v2 = TMath::Cos(2*(phi-psi2_angle));
 
+      hNscatt->Fill(numscatterings);
+
+      if(fabs(y) < 1)
+	{
+	  hNscatt_mideta->Fill(numscatterings);
+	}
+
+      if(numscatterings > 1) numscatterings = 2;
+
       //Fill histograms for scattering angle in CoM for different number of scatterings
       for(int j=0; j<v.size(); j++)
 	{
 	  float scattAngle = v[j].angleCMS;
-	  if(j<=2)
+	  if(j<=1)
 	    {
 	      hAngle[j]->Fill(scattAngle);
 	    }
 	  else
 	    {
-	      hAngle[3]->Fill(scattAngle);
+	      hAngle[2]->Fill(scattAngle);
 	    }
 	}
 
@@ -381,12 +397,18 @@ void processEvent()
       hDeltaRapidity[numscatterings]->Fill(delta_y);
       hdN_dpT[numscatterings]->Fill(pT);
       hv2_pT[numscatterings]->Fill(pT,v2,1);
+      hv2_pT_finalstate->Fill(pT,v2,1);
       hEndStatev2[numscatterings]->Fill(v2,pT);
       hNscatt_pT->Fill(pT,numscatterings,1);
+
+      if(fabs(y) < 1)
+	{
+	  hv2_pT_mideta[numscatterings]->Fill(pT,v2,1);
+	}
     }
 }
 
-void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Correlation/ampt_vn_pT/data/parton-initial-afterPropagation.dat", char *evolInfoFile = "/direct/phenix+hhj/jdok/He3Au_Correlation/ampt_vn_pT/data/parton-collisionsHistory.dat", char *outputFile = "evolution_out.root")
+void parseHistoryFiles(char *initialInfoFile = "parton-initial-afterPropagation.dat", char *evolInfoFile = "parton-collisionsHistory.dat", char *outputFile = "evolution_out.root")
 {
   //Load participant plane angles from file
   loadParticipantPlanes();
@@ -395,14 +417,18 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Co
   for(int i=0; i<NSCATT; i++)
     {
       hDeltaRapidity[i] = new TH1F(Form("hDeltaRapidity_%i",i),Form("hDeltaRapidity_%i;#Delta y",i),500,-10,10);
-      hRapidity[i] = new TH1F(Form("hRapidity_%i",i),Form("hRapidity_%i;y",i),500,-5,5);
+      hRapidity[i] = new TH1F(Form("hRapidity_%i",i),Form("hRapidity_%i;y",i),500,-5.01,4.99);
       hdN_dpT[i] = new TH1F(Form("dN_dpT_%i",i),Form("dN_dpT_%i;p_{T};dN/dp_{T}",i),100,0,4);
       hv2_pT[i] = new TProfile(Form("hv2_pT_%i",i),Form("hv2_pT_%i;p_{T};v_{2}",i),50,0,5,-2,2);
+      hv2_pT_mideta[i] = new TProfile(Form("hv2_pT_mideta_%i",i),Form("hv2_pT_mideta_%i;p_{T};v_{2}",i),50,0,5,-2,2);
       hAngle[i] = new TH1F(Form("hAngle_%i",i),Form("hAngle_%i;#theta",i),500,0,2*TMath::Pi());
       hEndStatev2[i] = new TH2F(Form("hEndStatev2_%i",i),Form("hEndStatev2_%i",i),1200,-1.2,1.2,50,0,5);
+      hv2_pT_finalstate = new TProfile("hv2_pT_finalstate","hv2_pT_finalstate",50,0,5,-2,2);
     }
 
   hNscatt_pT = new TProfile("hNscatt_pT","Profile of Nscatt vs pT",100,0,5,0,20);
+  hNscatt = new TH1F("hNscatt","hNscatt",6,-0.5,5.5);
+  hNscatt_mideta = new TH1F("hNscatt_mideta","hNscatt_mideta",6,-0.5,5.5);
 
   //Read initial parton information file
   ifstream myFileInitialInfo;
@@ -582,5 +608,5 @@ void parseHistoryFiles(char *initialInfoFile = "/direct/phenix+hhj/jdok/He3Au_Co
       eventParticles.clear();
     }
   writeHistograms(outputFile);
-  draw();
+  //draw();
 }
