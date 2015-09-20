@@ -52,8 +52,8 @@ struct parton
 //Verbosity flag
 bool verbosity = false;
 
-//Categories for the number of scattering events. NSCAT = 0, 1, 2, >=3
-const int NSCATT = 4;
+//Participant plane for event
+float psi2;
 
 //Vector of vectors to contain parton evolution for a given event
 vector<vector<parton> > eventParticles;
@@ -68,7 +68,7 @@ int evtnumber = 0;
 float dt = 0.05;
 
 //Number of iterations in animation
-int NITER = 5;
+int NITER = 100;
 
 //Amount of time during which we display a collision marker
 float collMarkTime = 4*dt;
@@ -77,12 +77,37 @@ float collMarkTime = 4*dt;
 // Functions
 //-----------------------------------
 
-void draw(vector<float> x, vector<float> y, int iteration)
+void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2)
 {
-  TCanvas *c = new TCanvas(Form("c_%i",iteration),Form("c_%i",iteration),600,600);
+  TCanvas *c = new TCanvas(Form("c_%i",iteration),Form("c_%i",iteration),600,800);
   gStyle->SetOptStat(0);
 
-  //Template histogram
+  //Divide canvas into a pad for the event display, and another for v2(t)
+  TPad *pad1 = new TPad("pad1", "The pad 80% of the height",0.0, 0.2, 1.0, 1.0);
+  TPad *pad2 = new TPad("pad2", "The pad 20% of the height",0.0, 0.0, 1.0, 0.2);
+
+  pad1->Draw();
+  pad2->Draw();
+
+  //Go to pad with v2(t)
+  pad2->cd();
+  TH1F *hTemplate_v2 = new TH1F(Form("hTemplate_v2_%i",iteration),"",NITER,0,NITER*dt);
+  hTemplate_v2->GetXaxis()->SetTitleFont(62);
+  hTemplate_v2->GetYaxis()->SetTitleFont(62);
+  hTemplate_v2->GetXaxis()->SetLabelFont(62);
+  hTemplate_v2->GetYaxis()->SetLabelFont(62);
+  hTemplate_v2->GetYaxis()->SetRangeUser(0,0.25);
+  hTemplate_v2->SetFillColor(kBlue);
+
+  for(int i=1; i<=v2.size(); i++)
+    {
+      hTemplate_v2->SetBinContent(i,v2[i-1]);
+    }
+
+  hTemplate_v2->Draw();
+
+  //Go to pad with scattering animation
+  pad1->cd();
   TH2F *hTemplate = new TH2F(Form("hTemplate_%i",iteration),Form("hTemplate_%i",iteration),100,-10,10,100,-10,10);
   hTemplate->SetTitle("");
   hTemplate->GetXaxis()->SetTitle("x [fm]");
@@ -120,7 +145,7 @@ void draw(vector<float> x, vector<float> y, int iteration)
 	}
     }
 
-  /*
+  
   if(iteration < 10)
     {
       c->SaveAs(Form("IterationFrame_00%i.gif",iteration));
@@ -133,7 +158,7 @@ void draw(vector<float> x, vector<float> y, int iteration)
     {
       c->SaveAs(Form("IterationFrame_%i.gif",iteration));
     }
-  */
+  
 }
 
 void computePosition(float &x, float &y, vector<parton> evol, float t0)
@@ -190,8 +215,41 @@ void computePosition(float &x, float &y, vector<parton> evol, float t0)
   y = y0 + yTraveled;
 }
 
+void loadEventPlane()
+{
+  ifstream psi_2_file;
+  psi_2_file.open("psi_2.txt");
+
+  while(psi_2_file)
+    {
+      psi_2_file >> psi2;
+    }
+
+  psi_2_file.close();
+}
+
+float computeEllipticFlow(vector<float> x, vector<float> y)
+{
+  float v2 = 0.0;
+  int nPartons = x.size();
+
+  for(int i=0; i<nPartons; i++)
+    {
+      float x_pos = x[i];
+      float y_pos = y[i];
+      float phi = TMath::ATan2(y_pos,x_pos);
+
+      v2 += TMath::Cos(2*(phi-psi2));
+    }
+
+  v2 = (float) v2/nPartons;
+  return v2;
+}
+
 void processEvent()
 {
+  loadEventPlane();
+
   int numPartons = eventParticles.size();
 
   //Determine the x,y,t coordinates of each scattering event
@@ -213,6 +271,7 @@ void processEvent()
   //Loop over all particles in N iterations to find their positions
   vector<float> xvals;
   vector<float> yvals;
+  vector<float> v2vals;
 
   int iteration = 0;
   while(iteration < NITER)
@@ -228,7 +287,10 @@ void processEvent()
 	  yvals.push_back(y);
 	}
  
-      draw(xvals, yvals, iteration);
+      float v2 = computeEllipticFlow(xvals, yvals);
+      v2vals.push_back(v2);
+
+      draw(xvals, yvals, iteration, v2vals);
       xvals.clear();
       yvals.clear();
       iteration++;
