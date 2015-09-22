@@ -74,15 +74,15 @@ int NITER = 100;
 float collMarkTime = 4*dt;
 
 //Collision system to display
-int collSystem = 1; //0 = p+Au, 1 = d+Au
+int collSystem = 2; //0 = p+Au, 1 = d+Au, 2 = He3+Au
 
 //-----------------------------------
 // Functions
 //-----------------------------------
 
-void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vector<float> epsilon2)
+void draw(vector<float> x_green, vector<float> y_green, vector<float> x_blue, vector<float> y_blue, vector<float> x_yellow, vector<float> y_yellow, int iteration, vector<float> v2, vector<float> epsilon2)
 {
-  TCanvas *c = new TCanvas(Form("c_%i",iteration),Form("c_%i",iteration),600,800);
+  TCanvas *c = new TCanvas(Form("c_%i",iteration),Form("c_%i",iteration),480,800);
   gStyle->SetOptStat(0);
 
   //Divide canvas into a pad for the event display, v2(t), and epsilon2(t)
@@ -96,7 +96,10 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
 
   //Go to pad with epsilon2(t)
   pad3->cd();
+  pad3->SetFillColor(kBlack);
   pad3->SetBottomMargin(0.3);
+  pad3->SetTickx();
+  pad3->SetTicky();
 
   TH1F *hTemplate_ep2 = new TH1F(Form("hTemplate_ep2_%i",iteration),";t [fm/c]; #varepsilon_{2}",NITER,0,NITER*dt);
   hTemplate_ep2->GetXaxis()->SetTitleFont(62);
@@ -106,13 +109,21 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
   hTemplate_ep2->GetYaxis()->SetTitleOffset(0.3);
   hTemplate_ep2->GetYaxis()->SetTitleSize(0.15);
   hTemplate_ep2->GetYaxis()->SetLabelSize(0.09);
-  hTemplate_ep2->GetYaxis()->SetRangeUser(-0.05,0.7);
+  hTemplate_ep2->GetYaxis()->SetRangeUser(0,1);
+  hTemplate_ep2->GetYaxis()->SetNdivisions(8);
+
+  hTemplate_ep2->GetXaxis()->SetAxisColor(kWhite);
+  hTemplate_ep2->GetYaxis()->SetAxisColor(kWhite);
+  hTemplate_ep2->GetXaxis()->SetTitleColor(kWhite);
+  hTemplate_ep2->GetYaxis()->SetTitleColor(kWhite);
+  hTemplate_ep2->GetXaxis()->SetLabelColor(kWhite);
+  hTemplate_ep2->GetYaxis()->SetLabelColor(kWhite);
 
   hTemplate_ep2->GetXaxis()->SetTitleOffset(0.8);
   hTemplate_ep2->GetXaxis()->SetTitleSize(0.12);
   hTemplate_ep2->GetXaxis()->SetLabelSize(0.09);
 
-  hTemplate_ep2->SetLineColor(kRed);
+  hTemplate_ep2->SetLineColor(kSpring-9);
   hTemplate_ep2->SetLineWidth(2);
 
   for(int i=1; i<=epsilon2.size(); i++)
@@ -124,7 +135,10 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
 
   //Go to pad with v2(t)
   pad2->cd();
+  pad2->SetFillColor(kBlack);
   pad2->SetBottomMargin(0.3);
+  pad2->SetTickx();
+  pad2->SetTicky();
 
   TH1F *hTemplate_v2 = new TH1F(Form("hTemplate_v2_%i",iteration),";t [fm/c]; v_{2}",NITER,0,NITER*dt);
   hTemplate_v2->GetXaxis()->SetTitleFont(62);
@@ -134,13 +148,21 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
   hTemplate_v2->GetYaxis()->SetTitleOffset(0.3);
   hTemplate_v2->GetYaxis()->SetTitleSize(0.15);
   hTemplate_v2->GetYaxis()->SetLabelSize(0.09);
-  hTemplate_v2->GetYaxis()->SetRangeUser(-0.05,0.28);
+  hTemplate_v2->GetYaxis()->SetRangeUser(-0.1,0.1);
+  hTemplate_v2->GetYaxis()->SetNdivisions(8);
+
+  hTemplate_v2->GetXaxis()->SetAxisColor(kWhite);
+  hTemplate_v2->GetYaxis()->SetAxisColor(kWhite);
+  hTemplate_v2->GetXaxis()->SetTitleColor(kWhite);
+  hTemplate_v2->GetYaxis()->SetTitleColor(kWhite);
+  hTemplate_v2->GetXaxis()->SetLabelColor(kWhite);
+  hTemplate_v2->GetYaxis()->SetLabelColor(kWhite);
 
   hTemplate_v2->GetXaxis()->SetTitleOffset(0.8);
   hTemplate_v2->GetXaxis()->SetTitleSize(0.12);
   hTemplate_v2->GetXaxis()->SetLabelSize(0.09);
 
-  hTemplate_v2->SetLineColor(kBlue);
+  hTemplate_v2->SetLineColor(kOrange+0);
   hTemplate_v2->SetLineWidth(2);
 
   for(int i=1; i<=v2.size(); i++)
@@ -152,7 +174,11 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
 
   //Go to pad with scattering animation
   pad1->cd();
-  TH2F *hTemplate = new TH2F(Form("hTemplate_%i",iteration),Form("hTemplate_%i",iteration),100,-10,10,100,-10,10);
+  pad1->SetFillColor(kBlack);
+  pad1->SetTickx();
+  pad1->SetTicky();
+
+  TH2F *hTemplate = new TH2F(Form("hTemplate_%i",iteration),Form("hTemplate_%i",iteration),100,-5,5,100,-5,5);
   hTemplate->SetTitle("");
   hTemplate->GetXaxis()->SetTitle("x [fm]");
   hTemplate->GetYaxis()->SetTitle("y [fm]");
@@ -160,6 +186,14 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
   hTemplate->GetYaxis()->SetTitleFont(62);
   hTemplate->GetXaxis()->SetLabelFont(62);
   hTemplate->GetYaxis()->SetLabelFont(62);
+
+  hTemplate->GetXaxis()->SetAxisColor(kWhite);
+  hTemplate->GetYaxis()->SetAxisColor(kWhite);
+  hTemplate->GetXaxis()->SetTitleColor(kWhite);
+  hTemplate->GetYaxis()->SetTitleColor(kWhite);
+  hTemplate->GetXaxis()->SetLabelColor(kWhite);
+  hTemplate->GetYaxis()->SetLabelColor(kWhite);
+  
   hTemplate->Draw();
 
   //Draw participant plane
@@ -167,13 +201,27 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
   lPlane->SetLineColor(kOrange-3);
   lPlane->SetLineWidth(2);
   lPlane->SetLineStyle(2);
-  lPlane->Draw("same");
+  //lPlane->Draw("same");
 
   //Iterate over partons position vectors and draw TEllipse
-  for(int i=0; i<x.size(); i++)
+  for(int i=0; i<x_green.size(); i++)
     {
-      TEllipse *tell = new TEllipse(x[i], y[i], 0.05, 0.05);
-      tell->SetFillColor(kBlack);
+      TEllipse *tell = new TEllipse(x_green[i], y_green[i], 0.09, 0.09);
+      tell->SetFillColor(kPink+7);
+      tell->Draw("same");
+    }
+
+  for(int i=0; i<x_blue.size(); i++)
+    {
+      TEllipse *tell = new TEllipse(x_blue[i], y_blue[i], 0.09, 0.09);
+      tell->SetFillColor(kSpring-8);
+      tell->Draw("same");
+    }
+
+  for(int i=0; i<x_yellow.size(); i++)
+    {
+      TEllipse *tell = new TEllipse(x_yellow[i], y_yellow[i], 0.09, 0.09);
+      tell->SetFillColor(kAzure+1);
       tell->Draw("same");
     }
 
@@ -189,14 +237,16 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
     {
       if(iteration*dt >= scatteringTimes[i].t && iteration*dt <= scatteringTimes[i].t + collMarkTime)
 	{
-	  TEllipse *tCollMark = new TEllipse(scatteringTimes[i].x, scatteringTimes[i].y, 0.2, 0.2);
-	  tCollMark->SetLineColor(kRed);
+	  TEllipse *tCollMark = new TEllipse(scatteringTimes[i].x, scatteringTimes[i].y, 0.25, 0.25);
+	  tCollMark->SetLineColor(kWhite);
+	  tCollMark->SetLineWidth(3);
+	  //tCollMark->SetFillColor(kRed);
 	  tCollMark->SetFillStyle(0);
 	  tCollMark->Draw("same");
 	}
     }
 
-  /*
+  
   if(iteration < 10)
     {
       c->SaveAs(Form("IterationFrame_00%i.gif",iteration));
@@ -209,7 +259,7 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vec
     {
       c->SaveAs(Form("IterationFrame_%i.gif",iteration));
     }
-  */
+  
   
 }
 
@@ -280,7 +330,11 @@ void loadEventPlane()
     }
   if(collSystem == 1)
     {
-      psi_2_file.open("psi_2_dAu.txt");
+      psi_2_file.open("psi_2_He3Au.txt");
+    }
+  if(collSystem == 2)
+    {
+      psi_2_file.open("psi_2_He3Au.txt");
     }
 
   while(psi_2_file)
@@ -310,12 +364,34 @@ float computeEllipticFlow(vector<float> phi)
     }
 
   v2 = (float) v2/nPartons;
-  if(v2 != v2) return -999; //If we get a NaN (i.e. partons not yet formed), return -999
+  if(v2 != v2) return 0; //If we get a NaN (i.e. partons not yet formed), return -999
   return v2;
 }
 
-float computeEpsilon2(vector<float> x, vector<float> y)
+float computeEpsilon2(vector<float> x_green, vector<float> y_green, vector<float> x_yellow, vector<float> y_yellow, vector<float> x_blue, vector<float> y_blue)
 {
+  //Concatenate all partons in a single vector
+  vector<float> x;
+  vector<float> y;
+
+  for(int i=0; i<x_green.size(); i++)
+    {
+      x.push_back(x_green[i]);
+      y.push_back(y_green[i]);
+    }
+
+  for(int i=0; i<x_blue.size(); i++)
+    {
+      x.push_back(x_blue[i]);
+      y.push_back(y_blue[i]);
+    }
+
+  for(int i=0; i<x_yellow.size(); i++)
+    {
+      x.push_back(x_yellow[i]);
+      y.push_back(y_yellow[i]);
+    }
+
   //Start by computing center of mass
   int nPartons = 0;
 
@@ -365,7 +441,7 @@ float computeEpsilon2(vector<float> x, vector<float> y)
   r2 = r2/nPartons;
 
   float ep2 = TMath::Sqrt(qx*qx + qy*qy)/r2;
-  if(ep2 != ep2) return -999; //If NaN (i.e. partons not yet formed), return -999
+  if(ep2 != ep2) return 0; //If NaN (i.e. partons not yet formed), return -999
   return ep2;
 }
 
@@ -392,8 +468,22 @@ void processEvent()
     }
 
   //Loop over all particles in N iterations to find their positions
-  vector<float> xvals;
-  vector<float> yvals;
+
+  //If d+Au, for nucleons with y_init > 0
+  //If p+Au, for nucleons that don't scatter
+  vector<float> xvals_green;
+  vector<float> yvals_green;
+
+  //If d+Au, for nucleons with y_init < 0
+  //If p+Au, for nucleons with Nscatt = 1
+  vector<float> xvals_yellow;
+  vector<float> yvals_yellow;
+
+  //If d+Au, don't use these vectors
+  //If p+Au, for nucleons with Nscatt >= 2
+  vector<float> xvals_blue;
+  vector<float> yvals_blue;
+
   vector<float> phivals;
   vector<float> v2vals;
   vector<float> epsilon2vals;
@@ -411,20 +501,73 @@ void processEvent()
 
 	  computePosition(x, y, phi, v, dt*iteration);
 
-	  xvals.push_back(x);
-	  yvals.push_back(y);
+	  //Sort coordinates into different vectors depending on Nscatt or initial hotspot location (for pAu, dAu respectively)
+	  if(collSystem == 1)
+	    {
+	      if(v[0].y < 0)
+		{
+		  xvals_yellow.push_back(x);
+		  yvals_yellow.push_back(y);
+		}
+	      else
+		{
+		  xvals_green.push_back(x);
+		  yvals_green.push_back(y);
+		}
+	    }
+	  else if(collSystem == 0)
+	    {
+	      if(v.size() == 1)
+		{
+		  xvals_green.push_back(x);
+		  yvals_green.push_back(y);
+		}
+	      else if(v.size() == 2)
+		{
+		  xvals_yellow.push_back(x);
+		  yvals_yellow.push_back(y);
+		}
+	      else if(v.size() >= 3)
+		{
+		  xvals_blue.push_back(x);
+		  yvals_blue.push_back(y);
+		}
+	    }
+	  else if(collSystem == 2)
+	    {
+	      if(v[0].y < -1)
+		{
+		  xvals_yellow.push_back(x);
+		  yvals_yellow.push_back(y);
+		}
+	      else if(v[0].y < 0 && v[0].y > -1)
+		{
+		  xvals_green.push_back(x);
+		  yvals_green.push_back(y);
+		}
+	      else if(v[0].y > 0)
+		{
+		  xvals_blue.push_back(x);
+		  yvals_blue.push_back(y);
+		}
+	    }
+
 	  phivals.push_back(phi);
 	}
  
       float v2 = computeEllipticFlow(phivals);
       v2vals.push_back(v2);
 
-      float epsilon2 = computeEpsilon2(xvals, yvals);
+      float epsilon2 = computeEpsilon2(xvals_green, yvals_green, xvals_yellow, yvals_yellow, xvals_blue, yvals_blue);
       epsilon2vals.push_back(epsilon2);
 
-      draw(xvals, yvals, iteration, v2vals, epsilon2vals);
-      xvals.clear();
-      yvals.clear();
+      draw(xvals_green, yvals_green, xvals_blue, yvals_blue, xvals_yellow, yvals_yellow, iteration, v2vals, epsilon2vals);
+      xvals_green.clear();
+      yvals_green.clear();
+      xvals_yellow.clear();
+      yvals_yellow.clear();
+      xvals_blue.clear();
+      yvals_blue.clear();
       phivals.clear();
       iteration++;
     }
@@ -439,8 +582,13 @@ void animateEvent(char *initialInfoFile = "", char *evolInfoFile = "")
     }
   else if(collSystem == 1)
     {
-      initialInfoFile = "parton-initial-afterPropagation_dAu.dat";
-      evolInfoFile = "parton-collisionsHistory_dAu.dat";
+      initialInfoFile = "parton-initial-afterPropagation_He3Au.dat";
+      evolInfoFile = "parton-collisionsHistory_He3Au.dat";
+    }
+  else if(collSystem == 2)
+    {
+      initialInfoFile = "parton-initial-afterPropagation_He3Au.dat";
+      evolInfoFile = "parton-collisionsHistory_He3Au.dat";
     }
 
     //Read initial parton information file
