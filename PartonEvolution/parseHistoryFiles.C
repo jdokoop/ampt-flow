@@ -77,6 +77,7 @@ TH1F *hNscatt;
 TH1F *hNscatt_mideta;
 TProfile *hv2_pT_finalstate;
 TH2F *hEndStatev2[NSCATT];
+TProfile *hTime_pT;
 
 //Counter for the number of events processed
 int evtnumber = 0;
@@ -102,6 +103,7 @@ void writeHistograms(char *outFileName="")
   hNscatt->Write();
   hNscatt_mideta->Write();
   hv2_pT_finalstate->Write();
+  hTime_pT->Write();
 }
 
 /*
@@ -375,6 +377,7 @@ void processEvent()
       if(fabs(y) < 1)
 	{
 	  hNscatt_mideta->Fill(numscatterings);
+	 hTime_pT->Fill(TMath::Sqrt(v[0].px*v[0].px + v[0].py*v[0].py), v[0].t, 1);
 	}
 
       if(numscatterings > 1) numscatterings = 2;
@@ -429,6 +432,7 @@ void parseHistoryFiles(char *initialInfoFile = "parton-initial-afterPropagation.
   hNscatt_pT = new TProfile("hNscatt_pT","Profile of Nscatt vs pT",100,0,5,0,20);
   hNscatt = new TH1F("hNscatt","hNscatt",6,-0.5,5.5);
   hNscatt_mideta = new TH1F("hNscatt_mideta","hNscatt_mideta",6,-0.5,5.5);
+  hTime_pT = new TProfile("hTime_pT","Formation Time vs pT",100,0,5,0,50);
 
   //Read initial parton information file
   ifstream myFileInitialInfo;
