@@ -73,38 +73,82 @@ int NITER = 100;
 //Amount of time during which we display a collision marker
 float collMarkTime = 4*dt;
 
+//Collision system to display
+int collSystem = 1; //0 = p+Au, 1 = d+Au
+
 //-----------------------------------
 // Functions
 //-----------------------------------
 
-void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2)
+void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2, vector<float> epsilon2)
 {
   TCanvas *c = new TCanvas(Form("c_%i",iteration),Form("c_%i",iteration),600,800);
   gStyle->SetOptStat(0);
 
-  //Divide canvas into a pad for the event display, and another for v2(t)
-  TPad *pad1 = new TPad("pad1", "The pad 80% of the height",0.0, 0.2, 1.0, 1.0);
-  TPad *pad2 = new TPad("pad2", "The pad 20% of the height",0.0, 0.0, 1.0, 0.2);
+  //Divide canvas into a pad for the event display, v2(t), and epsilon2(t)
+  TPad *pad1 = new TPad("pad1", "The pad 60% of the height",0.0, 0.4, 1.0, 1.0);
+  TPad *pad2 = new TPad("pad2", "The pad 20% of the height",0.0, 0.2, 1.0, 0.4);
+  TPad *pad3 = new TPad("pad3", "The pad 20% of the height",0.0, 0.0, 1.0, 0.2);
 
   pad1->Draw();
   pad2->Draw();
+  pad3->Draw();
+
+  //Go to pad with epsilon2(t)
+  pad3->cd();
+  pad3->SetBottomMargin(0.3);
+
+  TH1F *hTemplate_ep2 = new TH1F(Form("hTemplate_ep2_%i",iteration),";t [fm/c]; #varepsilon_{2}",NITER,0,NITER*dt);
+  hTemplate_ep2->GetXaxis()->SetTitleFont(62);
+  hTemplate_ep2->GetYaxis()->SetTitleFont(62);
+  hTemplate_ep2->GetXaxis()->SetLabelFont(62);
+  hTemplate_ep2->GetYaxis()->SetLabelFont(62);
+  hTemplate_ep2->GetYaxis()->SetTitleOffset(0.3);
+  hTemplate_ep2->GetYaxis()->SetTitleSize(0.15);
+  hTemplate_ep2->GetYaxis()->SetLabelSize(0.09);
+  hTemplate_ep2->GetYaxis()->SetRangeUser(-0.05,0.7);
+
+  hTemplate_ep2->GetXaxis()->SetTitleOffset(0.8);
+  hTemplate_ep2->GetXaxis()->SetTitleSize(0.12);
+  hTemplate_ep2->GetXaxis()->SetLabelSize(0.09);
+
+  hTemplate_ep2->SetLineColor(kRed);
+  hTemplate_ep2->SetLineWidth(2);
+
+  for(int i=1; i<=epsilon2.size(); i++)
+    {
+      hTemplate_ep2->SetBinContent(i,epsilon2[i-1]);
+    }
+
+  hTemplate_ep2->Draw("L");
 
   //Go to pad with v2(t)
   pad2->cd();
-  TH1F *hTemplate_v2 = new TH1F(Form("hTemplate_v2_%i",iteration),"",NITER,0,NITER*dt);
+  pad2->SetBottomMargin(0.3);
+
+  TH1F *hTemplate_v2 = new TH1F(Form("hTemplate_v2_%i",iteration),";t [fm/c]; v_{2}",NITER,0,NITER*dt);
   hTemplate_v2->GetXaxis()->SetTitleFont(62);
   hTemplate_v2->GetYaxis()->SetTitleFont(62);
   hTemplate_v2->GetXaxis()->SetLabelFont(62);
   hTemplate_v2->GetYaxis()->SetLabelFont(62);
-  hTemplate_v2->GetYaxis()->SetRangeUser(0,0.25);
-  hTemplate_v2->SetFillColor(kBlue);
+  hTemplate_v2->GetYaxis()->SetTitleOffset(0.3);
+  hTemplate_v2->GetYaxis()->SetTitleSize(0.15);
+  hTemplate_v2->GetYaxis()->SetLabelSize(0.09);
+  hTemplate_v2->GetYaxis()->SetRangeUser(-0.05,0.28);
+
+  hTemplate_v2->GetXaxis()->SetTitleOffset(0.8);
+  hTemplate_v2->GetXaxis()->SetTitleSize(0.12);
+  hTemplate_v2->GetXaxis()->SetLabelSize(0.09);
+
+  hTemplate_v2->SetLineColor(kBlue);
+  hTemplate_v2->SetLineWidth(2);
 
   for(int i=1; i<=v2.size(); i++)
     {
       hTemplate_v2->SetBinContent(i,v2[i-1]);
     }
 
-  hTemplate_v2->Draw();
+  hTemplate_v2->Draw("L");
 
   //Go to pad with scattering animation
   pad1->cd();
@@ -117,6 +161,13 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2)
   hTemplate->GetXaxis()->SetLabelFont(62);
   hTemplate->GetYaxis()->SetLabelFont(62);
   hTemplate->Draw();
+
+  //Draw participant plane
+  TLine *lPlane = new TLine(0, 0, 10*TMath::Cos(psi2), 10*TMath::Sin(psi2));
+  lPlane->SetLineColor(kOrange-3);
+  lPlane->SetLineWidth(2);
+  lPlane->SetLineStyle(2);
+  lPlane->Draw("same");
 
   //Iterate over partons position vectors and draw TEllipse
   for(int i=0; i<x.size(); i++)
@@ -145,7 +196,7 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2)
 	}
     }
 
-  
+  /*
   if(iteration < 10)
     {
       c->SaveAs(Form("IterationFrame_00%i.gif",iteration));
@@ -158,10 +209,11 @@ void draw(vector<float> x, vector<float> y, int iteration, vector<float> v2)
     {
       c->SaveAs(Form("IterationFrame_%i.gif",iteration));
     }
+  */
   
 }
 
-void computePosition(float &x, float &y, vector<parton> evol, float t0)
+void computePosition(float &x, float &y, float &phi_angle, vector<parton> evol, float t0)
 {
   //Determine if formation has occurred for the parton
   float t_form = evol[0].t;
@@ -169,6 +221,7 @@ void computePosition(float &x, float &y, vector<parton> evol, float t0)
     {
       x = -999.0;
       y = -999.0;
+      phi_angle = -999.0;
       return;
     }  
 
@@ -199,8 +252,10 @@ void computePosition(float &x, float &y, vector<parton> evol, float t0)
   float p = TMath::Sqrt(px*px + py*py + pz*pz);
 
   //Compute orientation of particle
-  float theta = TMath::ACos(pz/p);
-  float phi = TMath::ATan2(py,px);
+  TLorentzVector ev(px,py,pz,energy);
+  double phi = ev.Phi();
+  double theta = ev.Theta();
+  phi_angle = phi;
 
   //Compute new coordinate after time t0
   float distTraveled = vel*t0;
@@ -218,7 +273,15 @@ void computePosition(float &x, float &y, vector<parton> evol, float t0)
 void loadEventPlane()
 {
   ifstream psi_2_file;
-  psi_2_file.open("psi_2.txt");
+
+  if(collSystem == 0)
+    {
+      psi_2_file.open("psi_2.txt");
+    }
+  if(collSystem == 1)
+    {
+      psi_2_file.open("psi_2_dAu.txt");
+    }
 
   while(psi_2_file)
     {
@@ -228,22 +291,82 @@ void loadEventPlane()
   psi_2_file.close();
 }
 
-float computeEllipticFlow(vector<float> x, vector<float> y)
+float computeEllipticFlow(vector<float> phi)
 {
   float v2 = 0.0;
-  int nPartons = x.size();
+  int nPartons = 0;
 
-  for(int i=0; i<nPartons; i++)
+  for(int i=0; i<phi.size(); i++)
     {
-      float x_pos = x[i];
-      float y_pos = y[i];
-      float phi = TMath::ATan2(y_pos,x_pos);
+      //Ignore partons that haven't yet formed
+      if(phi[i] < -900)
+	{
+	  continue;
+	}
 
-      v2 += TMath::Cos(2*(phi-psi2));
+      float angle = phi[i];
+      v2 += TMath::Cos(2*(angle-psi2));
+      nPartons++;
     }
 
   v2 = (float) v2/nPartons;
+  if(v2 != v2) return -999; //If we get a NaN (i.e. partons not yet formed), return -999
   return v2;
+}
+
+float computeEpsilon2(vector<float> x, vector<float> y)
+{
+  //Start by computing center of mass
+  int nPartons = 0;
+
+  float x_cm = 0.0;
+  float y_cm = 0.0;
+
+  for(int i=0; i<x.size(); i++)
+    {
+      //Only use partons that have formed, otherwise their coordinates are (-999,-999)
+      if(x[i] < -900 && y[i] < -900)
+	{
+	  continue;
+	}
+
+      x_cm = x_cm + x[i];
+      y_cm = y_cm + y[i];
+      nPartons++;
+    }
+
+  x_cm = x_cm/nPartons;
+  y_cm = y_cm/nPartons;
+
+  //Compute eccentricity with respect to center of mass
+  float qx = 0.0;
+  float qy = 0.0;
+  float r2 = 0.0;
+
+  for(int i=0; i<x.size(); i++)
+    {
+      if(x[i] < -900 && y[i] < -900)
+	{
+	  continue;
+	}
+
+      float x_pos = x[i] - x_cm;
+      float y_pos = y[i] - y_cm;
+      float r = TMath::Sqrt(x_pos*x_pos + y_pos*y_pos);
+      float phi = TMath::ATan2(y_pos,x_pos);
+
+      qx += r*r*TMath::Cos(2*phi);
+      qy += r*r*TMath::Sin(2*phi);
+      r2 += r*r;
+    }
+
+  qx = qx/nPartons;
+  qy = qy/nPartons;
+  r2 = r2/nPartons;
+
+  float ep2 = TMath::Sqrt(qx*qx + qy*qy)/r2;
+  if(ep2 != ep2) return -999; //If NaN (i.e. partons not yet formed), return -999
+  return ep2;
 }
 
 void processEvent()
@@ -271,7 +394,9 @@ void processEvent()
   //Loop over all particles in N iterations to find their positions
   vector<float> xvals;
   vector<float> yvals;
+  vector<float> phivals;
   vector<float> v2vals;
+  vector<float> epsilon2vals;
 
   int iteration = 0;
   while(iteration < NITER)
@@ -282,23 +407,42 @@ void processEvent()
 	  
 	  float x = 0;
 	  float y = 0;
-	  computePosition(x, y, v, dt*iteration);
+	  float phi = 0;
+
+	  computePosition(x, y, phi, v, dt*iteration);
+
 	  xvals.push_back(x);
 	  yvals.push_back(y);
+	  phivals.push_back(phi);
 	}
  
-      float v2 = computeEllipticFlow(xvals, yvals);
+      float v2 = computeEllipticFlow(phivals);
       v2vals.push_back(v2);
 
-      draw(xvals, yvals, iteration, v2vals);
+      float epsilon2 = computeEpsilon2(xvals, yvals);
+      epsilon2vals.push_back(epsilon2);
+
+      draw(xvals, yvals, iteration, v2vals, epsilon2vals);
       xvals.clear();
       yvals.clear();
+      phivals.clear();
       iteration++;
     }
 }
 
-void animateEvent(char *initialInfoFile = "parton-initial-afterPropagation.dat", char *evolInfoFile = "parton-collisionsHistory.dat", char *outputFile = "evolution_out.root")
+void animateEvent(char *initialInfoFile = "", char *evolInfoFile = "")
 {
+  if(collSystem == 0)
+    {
+      initialInfoFile = "parton-initial-afterPropagation.dat";
+      evolInfoFile = "parton-collisionsHistory.dat";
+    }
+  else if(collSystem == 1)
+    {
+      initialInfoFile = "parton-initial-afterPropagation_dAu.dat";
+      evolInfoFile = "parton-collisionsHistory_dAu.dat";
+    }
+
     //Read initial parton information file
   ifstream myFileInitialInfo;
   myFileInitialInfo.open(initialInfoFile);
@@ -439,7 +583,6 @@ void animateEvent(char *initialInfoFile = "parton-initial-afterPropagation.dat",
 	}
 
       //Run analysis on particles on an event-by-event basis
-      //initializeDisplay();
       processEvent();
       eventParticles.clear();
     }
