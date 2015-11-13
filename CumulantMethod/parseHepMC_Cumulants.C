@@ -7,6 +7,9 @@
   #include "TLorentzVector.h"
   #include "TMCParticle.h"
   #include "TFile.h"
+  #include "TMath.h"
+  #include "TStyle.h"
+  #include "TCanvas.h"
   #include "TNtuple.h"
   #include "TProfile.h"
   #include "TH1.h"
@@ -54,7 +57,7 @@ float cn_4 = 0;
 float db_2 = 0;
 float db_4 = 0;
 
-  //Variables for differential four-particle cumulant analysis
+//Variables for differential four-particle cumulant analysis
 TH1F *hpT_Template;
 TProfile *hdb_2prime;
 TProfile *hdb_4prime;
@@ -63,6 +66,12 @@ TProfile *hdb_4;
 TProfile *hd2_2;
 TH1F *hd2_4;
 TH1F *hv2_4;
+
+//Diagnostic histograms
+TH1F *hEta;
+TH1F *hpT;
+TH1F *hpT_EtaCut;
+TH1F *hPhi;
 
 int evtnumber = 0;
 
@@ -73,9 +82,11 @@ int evtnumber = 0;
 void writeHistosToFile(char *outFileName="")
 {
   TFile* fout = new TFile(outFileName, "RECREATE");
-  //hv2_pT->Write();
-  //hv3_pT->Write();
-  //hNcoll_Yield->Write();
+  hdb_2prime->Write();
+  hdb_4prime->Write();
+  hdb_2->Write();
+  hdb_4->Write();
+  fout->Close();
 }
 
 cmpx multiplyComplex(float x, float y, float u, float v)
@@ -93,6 +104,19 @@ float getNormSq(float x, float y)
 {
   //z = x + iy
   return x*x + y*y;
+}
+
+void draw()
+{
+  gStyle->SetOptStat(0);
+  TCanvas *c1 = new TCanvas("c1","c1",600,600);
+  hEta->Draw();
+
+  TCanvas *c2 = new TCanvas("c2","c2",600,600);
+  hpT->Draw();
+
+  TCanvas *c3 = new TCanvas("c3","c3",600,600);
+  hPhi->Draw();
 }
 
 void computeCumulants()
@@ -121,7 +145,7 @@ void computeCumulants()
   hv2_4 = (TH1F*)hd2_4->Clone("hv2_4");
   float scaleFactor = -1*pow(-1*cn_4,3.0/4.0);
   hv2_4->Scale(1.0/scaleFactor);
-  hv2_4->Draw();
+  //hv2_4->Draw();
 }
 
 void processEventCumulants()
@@ -146,8 +170,15 @@ void processEventCumulants()
     double phi = ev.Phi();
     double eta = ev.Eta();
 
-      //Only consider particles within -2 < eta < 2 and 0 < pT [GeV/c] < 5
+    //Fill diganostic histograms
+    hEta->Fill(eta);
+    hpT->Fill(pT);
+    hPhi->Fill(phi);
+
+    //Only consider particles within -2 < eta < 2 and 0 < pT [GeV/c] < 5
     if(TMath::Abs(eta) > 2.0 || pT > 5.0) continue;
+
+    hpT_EtaCut->Fill(eta);
 
     q2x = q2x + TMath::Cos(2*phi);
     q2y = q2y + TMath::Sin(2*phi);
@@ -260,11 +291,16 @@ void parseHepMC_Cumulants(char *filename = "ampt_dAu_200.dat", char* outFileName
 {
   //Initialize histograms
   hpT_Template = new TH1F("hpT_Template","hpT_Template",NOB,0,5);
-  hdb_2prime = new TProfile("hdb_2prime","hdb_2prime",NOB,0,5,-500,500);
-  hdb_4prime = new TProfile("hdb_4prime","hdb_4prime",NOB,0,5,-500,500);
-  hd2_4       = new TH1F("hd2_4","hd2_4",NOB,0,5);
-  hdb_2      = new TProfile("hdb_2","hdb_2",1,0,1,-100,100);
-  hdb_4      = new TProfile("hdb_4","hdb_4",1,0,1,-100,100);
+  hdb_2prime   = new TProfile("hdb_2prime","hdb_2prime",NOB,0,5,-500,500);
+  hdb_4prime   = new TProfile("hdb_4prime","hdb_4prime",NOB,0,5,-500,500);
+  hd2_4        = new TH1F("hd2_4","hd2_4",NOB,0,5);
+  hdb_2        = new TProfile("hdb_2","hdb_2",1,0,1,-100,100);
+  hdb_4        = new TProfile("hdb_4","hdb_4",1,0,1,-100,100);
+
+  hEta         = new TH1F("hEta","hEta;#eta;Counts",NOB,-6,6);
+  hpT          = new TH1F("hpT","hpT;p_{T};Counts",NOB,0,10);
+  hpT_EtaCut   = new TH1F("hpT_EtaCut","hpT_EtaCut;p_{T};Counts",NOB,0,20);
+  hPhi         = new TH1F("hPhi","hPhi;#phi;Counts",NOB,-TMath::Pi(),TMath::Pi());
 
   //Open File
   ifstream myFile;
@@ -352,5 +388,6 @@ void parseHepMC_Cumulants(char *filename = "ampt_dAu_200.dat", char* outFileName
   finalparticles.clear();
 }
   computeCumulants();
+  draw();
   //writeHistosToFile(outFileName);
 }
