@@ -33,12 +33,12 @@ visualize_partons <- function()
   # or flux tubes based on the difference in transverse position of parton pairs.
   # The algorithm is seeded with the number of wounded nucleons in the event
   kMeansObject <- kmeans(initialPartonInfo[,c("r","phi")], npart, 500, npart, "Hartigan-Wong")
-
+  print(kMeansObject)
+  
   # Assign a cluster number to each parton
   initialPartonInfo$clus <- kMeansObject$cluster
   initialPartonInfo$clus <- factor(initialPartonInfo$clus)
-  levels(initialPartonInfo$clus)
-  
+
   # Draw 3D visualization of initial partons and the clusters they belong to
   colors  <- rainbow(npart)
   markers <- as.numeric(initialPartonInfo$clus)
@@ -47,12 +47,27 @@ visualize_partons <- function()
                        pch = markers, 
                        xlab="x [fm]", ylab="y [fm]", zlab="z [fm]")
   
-  legend(s3d$xyz.convert(0.4, 3.7, -1.85), yjust=0, pch = markers,
-         legend = levels(initialPartonInfo$clus), col = colors)
+  #legend(s3d$xyz.convert(0.4, 3.7, -1.85), yjust=0, pch = markers,
+  #       legend = levels(initialPartonInfo$clus), col = colors)
   
   # Draw a 2D scatterplot of polar parton coordinates
   plot(initialPartonInfo$r, initialPartonInfo$phi, col = colors[as.numeric(initialPartonInfo$clus)], pch = markers, xlab="r [fm]", ylab="phi [rad]")
   #scatterplot(r ~ phi | clus, data=initialPartonInfo, xlab="phi", ylab="r")
   
-  #Determine, for each cluster
+  #Determine, for each cluster the min and max z
+  clusters <- levels(initialPartonInfo$clus)
+  minz  <- aggregate(initialPartonInfo$z, by=list(initialPartonInfo$clus), FUN=min)[2]
+  maxz  <- aggregate(initialPartonInfo$z, by=list(initialPartonInfo$clus), FUN=max)[2]
+  meanr <- aggregate(initialPartonInfo$r, by=list(initialPartonInfo$clus), FUN=mean)[2]
+  
+  clusterInfo <- data.frame(clusters, minz, maxz, meanr)
+  colnames(clusterInfo) <- c("clus","minz","maxz","meanr")
+  
+  #Determine the extent in pseudorapidity of each cluster
+  clusterInfo <- transform(clusterInfo, etamin=atanh(meanr/sqrt(meanr*meanr + minz*minz)))
+  clusterInfo <- transform(clusterInfo, etamax=atanh(meanr/sqrt(meanr*meanr + maxz*maxz)))
+  
+  plot(clusterInfo$etamin, clusterInfo$meanr, col = colors, xlab = "Eta", ylab = "r", xlim = c(-4,6), pch = markers)
+  points(clusterInfo$etamax, clusterInfo$meanr, col = colors, pch = markers)
+  segments(clusterInfo$etamin, clusterInfo$meanr, clusterInfo$etamax, clusterInfo$meanr, col = colors, lwd=2)
 }
