@@ -5,7 +5,7 @@
 # JDOK - 10/14/16
 #---------------------------------------------
 
-visualize_partons <- function(collsyst)
+visualize_partons <- function(collsyst,b)
 {
   library(scatterplot3d)
   library(car)
@@ -13,11 +13,11 @@ visualize_partons <- function(collsyst)
   # Read the initial nucleon information from file
   if(collsyst == "dau")
   {
-    initialNucleonInfo <- read.table("npart-xy.dat", skip = 1)
+    initialNucleonInfo <- read.table(paste("npart-xy_dAu_", b, "fm.dat", sep=""), skip = 1)
   }
   else if(collsyst == "auau")
   {
-    initialNucleonInfo <- read.table("npart-xy_auau.dat", skip = 1)
+    initialNucleonInfo <- read.table(paste("npart-xy_AuAu_", b, "fm.dat", sep=""), skip = 1)
   }  
   colnames(initialNucleonInfo) <- c("x","y","seq","status","znuc","junk1","junk2")
 
@@ -27,13 +27,17 @@ visualize_partons <- function(collsyst)
   # Read in initial parton information from file
   if(collsyst == "dau")
   {
-    initialPartonInfo <- read.table("parton-initial-afterPropagation.dat", skip = 1)
+    initialPartonInfo <- read.table(paste("parton-initial-afterPropagation_dAu_", b, "fm.dat", sep=""), skip = 1)
   }
   else if(collsyst == "auau")
   {
-    initialPartonInfo <- read.table("parton-initial-afterPropagation_AuAu.dat", skip = 1)
+    initialPartonInfo <- read.table(paste("parton-initial-afterPropagation_AuAu_", b, "fm.dat", sep=""), skip = 1)
   }
-  colnames(initialPartonInfo) <- c("pid","px","py","pz","e","x","y","z","t")
+  colnames(initialPartonInfo) <- c("pid","px","py","pz","m","x","y","z","t")
+  
+  # Plot the distribution of formation times
+  #timeCounts <- table(initialPartonInfo$t)
+  #barplot(timeCounts, main="Formation Time", xlab="Formation Time")
   
   # Impose a cut on the formation time t < 0.5 fm/c
   initialPartonInfo <- initialPartonInfo[which(initialPartonInfo$t < 0.5),]
@@ -41,24 +45,25 @@ visualize_partons <- function(collsyst)
   # Get the polar coordinates of partons and add to existing dataframe
   initialPartonInfo <- transform(initialPartonInfo, r=sqrt(x*x + y*y))
   initialPartonInfo <- transform(initialPartonInfo, phi=atan2(y,x))
-  initialPartonInfo <- transform(initialPartonInfo, eta=atanh(r/sqrt(x*x + y*y + z*z)))
+  initialPartonInfo <- transform(initialPartonInfo, gamma=1/sqrt(1-(px*px+py*py+pz*pz)/(px*px+py*py+pz*pz+m*m)))
+  initialPartonInfo <- transform(initialPartonInfo, tau=t/gamma)
+  initialPartonInfo <- transform(initialPartonInfo, rap=asinh(z/tau))
   
   # We now want to use the K-means algorithm to cluster the partons intro strings
   # or flux tubes based on the difference in transverse position of parton pairs.
   # The algorithm is seeded with the number of wounded nucleons in the event
-  kMeansObject <- kmeans(initialPartonInfo[,c("r","phi")], npart, 500, npart, "Hartigan-Wong")
-  print(kMeansObject)
-  
+  kMeansObject <- kmeans(initialPartonInfo[,c("r","phi")], npart, 200, npart, "Hartigan-Wong")
+
   # Assign a cluster number to each parton
   initialPartonInfo$clus <- kMeansObject$cluster
   initialPartonInfo$clus <- factor(initialPartonInfo$clus)
 
   # Draw 3D visualization of initial partons and the clusters they belong to
   colors  <- rainbow(npart)
+  markers <- as.numeric(initialPartonInfo$clus)
   
   if(collsyst == "dau")
   {
-    markers <- as.numeric(initialPartonInfo$clus)
     s3d <- scatterplot3d(initialPartonInfo$x, initialPartonInfo$y, initialPartonInfo$z, 
                          color = colors[as.numeric(initialPartonInfo$clus)], 
                          pch = markers, 
@@ -83,26 +88,25 @@ visualize_partons <- function(collsyst)
   
   #Determine, for each cluster the min and max z
   clusters <- levels(initialPartonInfo$clus)
-  minz  <- aggregate(initialPartonInfo$z, by=list(initialPartonInfo$clus), FUN=min)[2]
-  maxz  <- aggregate(initialPartonInfo$z, by=list(initialPartonInfo$clus), FUN=max)[2]
+  minrap  <- aggregate(initialPartonInfo$rap, by=list(initialPartonInfo$clus), FUN=min)[2]
+  maxrap  <- aggregate(initialPartonInfo$rap, by=list(initialPartonInfo$clus), FUN=max)[2]
   meanr <- aggregate(initialPartonInfo$r, by=list(initialPartonInfo$clus), FUN=mean)[2]
-  
-  clusterInfo <- data.frame(clusters, minz, maxz, meanr)
-  colnames(clusterInfo) <- c("clus","minz","maxz","meanr")
-  
-  #Determine the extent in pseudorapidity of each cluster
-  clusterInfo <- transform(clusterInfo, etamin=atanh(meanr/sqrt(meanr*meanr + minz*minz)))
-  clusterInfo <- transform(clusterInfo, etamax=atanh(meanr/sqrt(meanr*meanr + maxz*maxz)))
-  
+  meanx <- aggregate(initialPartonInfo$x, by=list(initialPartonInfo$clus), FUN=mean)[2]
+  meany <- aggregate(initialPartonInfo$y, by=list(initialPartonInfo$clus), FUN=mean)[2]
+
+  clusterInfo <- data.frame(clusters, minrap, maxrap, meanr, meanx, meany)
+  colnames(clusterInfo) <- c("clus","minrap","maxrap","meanr", "meanx", "meany")
+
   if(collsyst == "dau")
   {
-    plot(clusterInfo$etamin, clusterInfo$meanr, col = colors, xlab = "Eta", ylab = "r", xlim = c(-4,6), pch = markers)
-    points(clusterInfo$etamax, clusterInfo$meanr, col = colors, pch = markers)
+    plot(clusterInfo$minrap, clusterInfo$meanx, col = colors, xlab = "Eta", ylab = "r", xlim = c(-8,8), pch = markers)
+    points(clusterInfo$maxrap, clusterInfo$meanx, col = colors, pch = markers)
   }
   else if(collsyst == "auau")
   {
-    plot(clusterInfo$etamin, clusterInfo$meanr, col = colors, xlab = "Eta", ylab = "r", xlim = c(-4,6))
-    points(clusterInfo$etamax, clusterInfo$meanr, col = colors)
+    plot(clusterInfo$minrap, clusterInfo$meanx, col = colors, xlab = "Eta", ylab = "r", xlim = c(-8,8), ylim = c(-8,8))
+    points(clusterInfo$maxrap, clusterInfo$meanx, col = colors)
   }
-  segments(clusterInfo$etamin, clusterInfo$meanr, clusterInfo$etamax, clusterInfo$meanr, col = colors, lwd=2)
+  
+  segments(clusterInfo$minrap, clusterInfo$meanx, clusterInfo$maxrap, clusterInfo$meanx, col = colors, lwd=2)
 }
