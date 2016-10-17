@@ -5,20 +5,34 @@
 # JDOK - 10/14/16
 #---------------------------------------------
 
-visualize_partons <- function()
+visualize_partons <- function(collsyst)
 {
   library(scatterplot3d)
   library(car)
   
   # Read the initial nucleon information from file
-  initialNucleonInfo <- read.table("npart-xy.dat", skip = 1)
+  if(collsyst == "dau")
+  {
+    initialNucleonInfo <- read.table("npart-xy.dat", skip = 1)
+  }
+  else if(collsyst == "auau")
+  {
+    initialNucleonInfo <- read.table("npart-xy_auau.dat", skip = 1)
+  }  
   colnames(initialNucleonInfo) <- c("x","y","seq","status","znuc","junk1","junk2")
 
   # Determine the number of inelastically wounded nucleons (status = 3)
   npart <- sum(initialNucleonInfo$status == "3")
 
   # Read in initial parton information from file
-  initialPartonInfo <- read.table("parton-initial-afterPropagation.dat", skip = 1)
+  if(collsyst == "dau")
+  {
+    initialPartonInfo <- read.table("parton-initial-afterPropagation.dat", skip = 1)
+  }
+  else if(collsyst == "auau")
+  {
+    initialPartonInfo <- read.table("parton-initial-afterPropagation_AuAu.dat", skip = 1)
+  }
   colnames(initialPartonInfo) <- c("pid","px","py","pz","e","x","y","z","t")
   
   # Impose a cut on the formation time t < 0.5 fm/c
@@ -41,18 +55,31 @@ visualize_partons <- function()
 
   # Draw 3D visualization of initial partons and the clusters they belong to
   colors  <- rainbow(npart)
-  markers <- as.numeric(initialPartonInfo$clus)
-  s3d <- scatterplot3d(initialPartonInfo$x, initialPartonInfo$y, initialPartonInfo$z, 
-                       color = colors[as.numeric(initialPartonInfo$clus)], 
-                       pch = markers, 
-                       xlab="x [fm]", ylab="y [fm]", zlab="z [fm]")
+  
+  if(collsyst == "dau")
+  {
+    markers <- as.numeric(initialPartonInfo$clus)
+    s3d <- scatterplot3d(initialPartonInfo$x, initialPartonInfo$y, initialPartonInfo$z, 
+                         color = colors[as.numeric(initialPartonInfo$clus)], 
+                         pch = markers, 
+                         xlab="x [fm]", ylab="y [fm]", zlab="z [fm]")
+    
+    plot(initialPartonInfo$r, initialPartonInfo$phi, 
+         col = colors[as.numeric(initialPartonInfo$clus)], 
+         xlab="r [fm]", ylab="phi [rad]", pch = markers)
+  }
+  else if(collsyst == "auau")
+  {
+    s3d <- scatterplot3d(initialPartonInfo$x, initialPartonInfo$y, initialPartonInfo$z, 
+                         color = colors[as.numeric(initialPartonInfo$clus)], 
+                         xlab="x [fm]", ylab="y [fm]", zlab="z [fm]")
+    
+    plot(initialPartonInfo$r, initialPartonInfo$phi, 
+         col = colors[as.numeric(initialPartonInfo$clus)], xlab="r [fm]", ylab="phi [rad]")
+  }
   
   #legend(s3d$xyz.convert(0.4, 3.7, -1.85), yjust=0, pch = markers,
   #       legend = levels(initialPartonInfo$clus), col = colors)
-  
-  # Draw a 2D scatterplot of polar parton coordinates
-  plot(initialPartonInfo$r, initialPartonInfo$phi, col = colors[as.numeric(initialPartonInfo$clus)], pch = markers, xlab="r [fm]", ylab="phi [rad]")
-  #scatterplot(r ~ phi | clus, data=initialPartonInfo, xlab="phi", ylab="r")
   
   #Determine, for each cluster the min and max z
   clusters <- levels(initialPartonInfo$clus)
@@ -67,7 +94,15 @@ visualize_partons <- function()
   clusterInfo <- transform(clusterInfo, etamin=atanh(meanr/sqrt(meanr*meanr + minz*minz)))
   clusterInfo <- transform(clusterInfo, etamax=atanh(meanr/sqrt(meanr*meanr + maxz*maxz)))
   
-  plot(clusterInfo$etamin, clusterInfo$meanr, col = colors, xlab = "Eta", ylab = "r", xlim = c(-4,6), pch = markers)
-  points(clusterInfo$etamax, clusterInfo$meanr, col = colors, pch = markers)
+  if(collsyst == "dau")
+  {
+    plot(clusterInfo$etamin, clusterInfo$meanr, col = colors, xlab = "Eta", ylab = "r", xlim = c(-4,6), pch = markers)
+    points(clusterInfo$etamax, clusterInfo$meanr, col = colors, pch = markers)
+  }
+  else if(collsyst == "auau")
+  {
+    plot(clusterInfo$etamin, clusterInfo$meanr, col = colors, xlab = "Eta", ylab = "r", xlim = c(-4,6))
+    points(clusterInfo$etamax, clusterInfo$meanr, col = colors)
+  }
   segments(clusterInfo$etamin, clusterInfo$meanr, clusterInfo$etamax, clusterInfo$meanr, col = colors, lwd=2)
 }
